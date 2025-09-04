@@ -1,25 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  InputBase,
-  IconButton,
-  Menu,
-  MenuItem,
-  Container,
-  CircularProgress,
-  FormControl,
-  InputLabel,
-  Select,
-} from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import { ChevronDown, ShoppingCart, Loader } from 'lucide-react';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -32,45 +14,20 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedVariant, setSelectedVariant] = useState(null);
 
+  const [user, setUser] = useState(null);
+  const [anchorElUser, setAnchorElUser] = useState(false);
+
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
   const apiBase = 'http://localhost:5000/api';
 
-  // --- Navbar states ---
-  const [anchorElCategory, setAnchorElCategory] = useState(null);
-  const [anchorElUser, setAnchorElUser] = useState(null);
-  const [user, setUser] = useState(null); // State to hold user info
-
-  // Categories for the dropdown filter (matching HomePage.jsx)
-  const categories = [
-    { id: 'all', name: 'ทั้งหมด', categoryId: null },
-    { id: 'basketball-jerseys', name: 'เสื้อบาสเกตบอล', categoryId: 1 },
-    { id: 't-shirts', name: 'เสื้อ T-Shirt', categoryId: 2 },
-    { id: 'basketball-shorts', name: 'กางเกงบาสเกตบอล', categoryId: 3 },
-    { id: 'basketball-shoes', name: 'รองเท้าบาสเกตบอล', categoryId: 4 },
-    { id: 'socks', name: 'ถุงเท้า', categoryId: 5 },
-  ];
-
-  const handleMenuClickCategory = (event) => setAnchorElCategory(event.currentTarget);
-  const handleMenuCloseCategory = () => setAnchorElCategory(null);
-  // Modified handleCategorySelect to navigate to Home with categoryId as query param
-  const handleCategorySelect = (categoryId) => {
-    handleMenuCloseCategory();
-    // Navigate to Home page with categoryId as a query parameter
-    // This assumes HomePage.jsx reads categoryId from URL query params
-    navigate(`/?categoryId=${categoryId}`);
-  };
-
-  const handleMenuClickUser = (event) => setAnchorElUser(event.currentTarget);
-  const handleMenuCloseUser = () => setAnchorElUser(null);
-  const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); navigate('/login'); handleMenuCloseUser(); };
-
+  // Load user from localStorage
   useEffect(() => {
-    // Load user from localStorage on component mount
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (e) {
-        console.error("Failed to parse user from localStorage", e);
         localStorage.removeItem('user');
         setUser(null);
       }
@@ -86,8 +43,7 @@ export default function ProductDetailPage() {
         }
         setError(null);
       } catch (err) {
-        console.error("Error fetching product details:", err);
-        setError("ไม่สามารถโหลดรายละเอียดสินค้าได้");
+        setError('ไม่สามารถโหลดรายละเอียดสินค้าได้');
         setProduct(null);
       } finally {
         setLoading(false);
@@ -97,6 +53,7 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [id]);
 
+  // Update selected variant when color or size changes
   useEffect(() => {
     if (product && product.variants && selectedColor && selectedSize) {
       const foundVariant = product.variants.find(
@@ -109,51 +66,64 @@ export default function ProductDetailPage() {
   }, [selectedColor, selectedSize, product]);
 
   const handleAddToCart = () => {
-    // Check if user is logged in
     if (!user) {
-      const confirmLogin = window.confirm('คุณต้องเข้าสู่ระบบก่อนจึงจะสามารถเพิ่มสินค้าลงในตะกร้าได้ ต้องการเข้าสู่ระบบตอนนี้หรือไม่?');
-      if (confirmLogin) {
-        navigate('/login');
-      }
+      setShowLoginModal(true);
       return;
     }
 
     if (!selectedVariant) {
-      alert('กรุณาเลือกสีและขนาดของสินค้า');
+      alert('กรุณาเลือกสีและขนาด');
       return;
     }
     if (selectedVariant.stock <= 0) {
-      alert('สินค้าหมดสต็อกสำหรับสีและขนาดที่เลือก');
+      alert('สินค้าหมดสต็อก');
       return;
     }
-    console.log(`Added to cart: Product ID: ${product.id}, Variant ID: ${selectedVariant.variantId}, Color: ${selectedVariant.color}, Size: ${selectedVariant.size}, Price: ${selectedVariant.price}`);
     alert(`เพิ่ม ${product.name} (สี: ${selectedVariant.color}, ขนาด: ${selectedVariant.size}) ลงในตะกร้าแล้ว!`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    navigate('/login');
+    setAnchorElUser(false);
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>กำลังโหลดสินค้า...</Typography>
-      </Box>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="ml-3 text-gray-600">กำลังโหลดสินค้า...</span>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', flexDirection: 'column' }}>
-        <Typography color="error" variant="h6">{error}</Typography>
-        <Button onClick={() => navigate('/')} sx={{ mt: 2 }}>กลับหน้าหลัก</Button>
-      </Box>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h3 className="text-red-600 text-lg font-semibold">{error}</h3>
+        <button
+          onClick={() => navigate('/')}
+          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          กลับหน้าหลัก
+        </button>
+      </div>
     );
   }
 
   if (!product) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', flexDirection: 'column' }}>
-        <Typography variant="h6">ไม่พบสินค้า</Typography>
-        <Button onClick={() => navigate('/')} sx={{ mt: 2 }}>กลับหน้าหลัก</Button>
-      </Box>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h3 className="text-gray-700 text-lg">ไม่พบสินค้า</h3>
+        <button
+          onClick={() => navigate('/')}
+          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          กลับหน้าหลัก
+        </button>
+      </div>
     );
   }
 
@@ -161,271 +131,208 @@ export default function ProductDetailPage() {
   const availableSizes = Array.from(new Set(product.variants.map(v => v.size)));
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
+    <div className="flex-grow relative">
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold mb-4">คุณต้องเข้าสู่ระบบ</h3>
+            <p className="mb-6">กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้าลงในตะกร้า</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowLoginModal(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                เข้าสู่ระบบ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navbar */}
-      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid #e0e0e0' }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <nav className="flex items-center justify-between px-6 py-4">
+          <div className="flex-1">
+            <Link to="/" className="text-xl font-bold text-gray-900 no-underline hover:text-blue-600">
               Home
             </Link>
-          </Typography>
+          </div>
 
-          {/* Category Dropdown (เหมือน Home.js) */}
-          <Button
-            color="inherit"
-            endIcon={<KeyboardArrowDownIcon />}
-            onClick={handleMenuClickCategory}
-            sx={{ mx: 2 }}
-          >
-            Category
-          </Button>
-          <Menu
-            anchorEl={anchorElCategory}
-            open={Boolean(anchorElCategory)}
-            onClose={handleMenuCloseCategory}
-            MenuListProps={{ 'aria-labelledby': 'category-button' }}
-          >
-            {categories.map((cat) => (
-              <MenuItem
-                key={cat.id}
-                onClick={() => handleCategorySelect(cat.categoryId)} // Pass categoryId to navigate
-              >
-                {cat.name}
-              </MenuItem>
-            ))}
-          </Menu>
-
-          {/* Search Bar */}
-          <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            bgcolor: '#f0f0f0',
-            borderRadius: '20px',
-            px: 1,
-            py: 0.5,
-            width: { xs: '150px', sm: '200px', md: '300px' }
-          }}>
-            <IconButton type="submit" sx={{ p: '10px' }} aria-label="search">
-              <SearchIcon />
-            </IconButton>
-            <InputBase
-              sx={{ ml: 1, flex: 1 }}
-              placeholder="Search"
-              inputProps={{ 'aria-label': 'search' }}
-            />
-          </Box>
-
-          {/* Login/Register or User Profile */}
-          <Box sx={{ ml: 3 }}>
+          <div className="ml-6">
             {user ? (
-              <>
-                <Button
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
-                  onClick={handleMenuClickUser}
-                  color="inherit"
-                  endIcon={<KeyboardArrowDownIcon />}
-                  sx={{ textTransform: 'none', fontSize: '1rem' }}
+              <div className="relative">
+                <button
+                  onClick={() => setAnchorElUser(!anchorElUser)}
+                  className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-gray-900"
                 >
-                  {user.email}
-                </Button>
-                <Menu
-                  id="menu-appbar"
-                  anchorEl={anchorElUser}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  keepMounted
-                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                  open={Boolean(anchorElUser)}
-                  onClose={handleMenuCloseUser}
-                >
-                  {user.role === 1 && ( // Corrected comparison operator
-                    <MenuItem onClick={handleMenuCloseUser} component={Link} to="/dashboard">
-                      Dashboard
-                    </MenuItem>
-                  )}
-                  <MenuItem onClick={handleMenuCloseUser} component={Link} to="/profile">
-                    ข้อมูลส่วนตัว
-                  </MenuItem>
-                  {user.role === 0 && ( // Corrected comparison operator
-                    <MenuItem onClick={handleMenuCloseUser} component={Link} to="/orders">
-                      รายการสั่งซื้อ
-                    </MenuItem>
-                  )}
-                  <MenuItem onClick={handleLogout}>
-                    ออกจากระบบ
-                  </MenuItem>
-                </Menu>
-              </>
+                  <span>{user.email}</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                {anchorElUser && (
+                  <div className="absolute top-full right-0 mt-1 w-48 bg-white border rounded-md shadow-lg z-50">
+                    <div className="py-1">
+                      {user.role === 1 && (
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setAnchorElUser(false)}
+                          className="block px-4 py-2 text-sm hover:bg-gray-100 no-underline text-gray-700"
+                        >
+                          Dashboard
+                        </Link>
+                      )}
+                      <Link
+                        to="/profile"
+                        onClick={() => setAnchorElUser(false)}
+                        className="block px-4 py-2 text-sm hover:bg-gray-100 no-underline text-gray-700"
+                      >
+                        ข้อมูลส่วนตัว
+                      </Link>
+                      {user.role === 0 && (
+                        <Link
+                          to="/orders"
+                          onClick={() => setAnchorElUser(false)}
+                          className="block px-4 py-2 text-sm hover:bg-gray-100 no-underline text-gray-700"
+                        >
+                          รายการสั่งซื้อ
+                        </Link>
+                      )}
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-gray-700"
+                      >
+                        ออกจากระบบ
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
-              <Box>
-                <Button component={Link} to="/register" color="inherit" sx={{ mr: 1 }}>
+              <div className="flex items-center space-x-3">
+                <Link to="/register" className="px-4 py-2 text-gray-700 hover:text-gray-900">
                   สมัครสมาชิก
-                </Button>
-                <Button component={Link} to="/login" variant="contained" color="primary">
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
                   เข้าสู่ระบบ
-                </Button>
-              </Box>
+                </Link>
+              </div>
             )}
-          </Box>
-        </Toolbar>
-      </AppBar>
+          </div>
+        </nav>
+      </header>
 
       {/* Product Detail */}
-      <Container sx={{ py: 4, mt: 4 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            gap: 4,
-          }}
-        >
-          {/* Left Section: Images */}
-          <Box sx={{ flex: 1 }}>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, gap: 2 }}>
-              {/* Thumbnail Images */}
-              <Box sx={{
-                display: 'flex',
-                flexDirection: { xs: 'row', sm: 'column' },
-                gap: 1,
-                overflowX: { xs: 'auto', sm: 'hidden' },
-                maxHeight: { sm: '400px' },
-                flexShrink: 0,
-                pb: { xs: 1, sm: 0 },
-              }}>
-                {product.imageUrls && product.imageUrls.map((imgUrl, index) => (
-                  <Box
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Left: Images */}
+          <div className="flex-1">
+            <div className="flex flex-col-reverse sm:flex-row gap-4">
+              {/* Thumbnails */}
+              <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto max-h-[400px]">
+                {product.imageUrls?.map((imgUrl, index) => (
+                  <img
                     key={index}
-                    component="img"
                     src={imgUrl}
                     alt={`Thumbnail ${index + 1}`}
-                    sx={{
-                      width: { xs: '80px', sm: '100px' },
-                      height: { xs: '80px', sm: '100px' },
-                      objectFit: 'contain',
-                      border: imgUrl === selectedImage ? '2px solid primary.main' : '1px solid #e0e0e0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      '&:hover': { borderColor: 'primary.light' },
-                    }}
+                    className={`w-20 h-20 object-contain rounded-md cursor-pointer border ${
+                      imgUrl === selectedImage ? 'border-blue-600' : 'border-gray-300'
+                    }`}
                     onClick={() => setSelectedImage(imgUrl)}
                   />
                 ))}
-              </Box>
+              </div>
 
-              {/* Main Product Image */}
-              <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Box
-                  component="img"
+              {/* Main Image */}
+              <div className="flex-1 flex items-center justify-center">
+                <img
                   src={selectedImage || 'https://placehold.co/400x500/E0E0E0/333333?text=Product+Image'}
                   alt={product.name}
-                  sx={{
-                    maxWidth: '100%',
-                    maxHeight: '500px',
-                    objectFit: 'contain',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                  }}
+                  className="max-h-[500px] object-contain rounded-lg shadow-md"
                 />
-              </Box>
-            </Box>
-          </Box>
+              </div>
+            </div>
+          </div>
 
-          {/* Right Section: Details */}
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-              {product.name}
-            </Typography>
-            <Typography variant="h5" color="primary" sx={{ mb: 2 }}>
+          {/* Right: Details */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+            <p className="text-2xl text-blue-600 mb-3">
               {selectedVariant ? selectedVariant.price : product.price} THB
-            </Typography>
+            </p>
             {product.description && (
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                {product.description}
-              </Typography>
+              <p className="text-gray-600 mb-4">{product.description}</p>
             )}
 
-            {/* Color Options */}
+            {/* Colors */}
             {availableColors.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  สี
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
+              <div className="mb-4">
+                <h4 className="font-semibold mb-2">สี</h4>
+                <div className="flex gap-2">
                   {availableColors.map((color) => (
-                    <Button
+                    <button
                       key={color}
-                      variant={selectedColor === color ? 'contained' : 'outlined'}
                       onClick={() => setSelectedColor(color)}
-                      sx={{
-                        minWidth: 'unset',
-                        px: 2,
-                        py: 1,
-                        borderRadius: '20px',
-                        textTransform: 'none',
-                        borderColor: selectedColor === color ? 'primary.main' : '#e0e0e0',
-                        color: selectedColor === color ? 'white' : 'text.primary',
-                        bgcolor: selectedColor === color ? 'primary.main' : 'transparent',
-                        '&:hover': {
-                          bgcolor: selectedColor === color ? 'primary.dark' : '#f5f5f5',
-                        }
-                      }}
+                      className={`px-4 py-2 rounded-full border ${
+                        selectedColor === color
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                      }`}
                     >
                       {color}
-                    </Button>
+                    </button>
                   ))}
-                </Box>
-              </Box>
+                </div>
+              </div>
             )}
 
-            {/* Size Options */}
+            {/* Sizes */}
             {availableSizes.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  ขนาด
-                </Typography>
-                <FormControl fullWidth>
-                  <InputLabel id="size-select-label">เลือกขนาด</InputLabel>
-                  <Select
-                    labelId="size-select-label"
-                    value={selectedSize}
-                    label="เลือกขนาด"
-                    onChange={e => setSelectedSize(e.target.value)}
-                    sx={{ borderRadius: '8px' }}
-                  >
-                    {availableSizes.map((size) => (
-                      <MenuItem key={size} value={size}>
-                        {size}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
+              <div className="mb-4">
+                <h4 className="font-semibold mb-2">ขนาด</h4>
+                <select
+                  value={selectedSize}
+                  onChange={(e) => setSelectedSize(e.target.value)}
+                  className="w-full border rounded-md px-3 py-2"
+                >
+                  <option value="">เลือกขนาด</option>
+                  {availableSizes.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
 
             {/* Stock */}
             {selectedVariant && (
-              <Typography variant="body1" sx={{ mb: 2, fontWeight: 'medium' }}>
+              <p className="mb-4 font-medium">
                 จำนวนคงเหลือ: {selectedVariant.stock > 0 ? selectedVariant.stock : 'สินค้าหมด'}
-              </Typography>
+              </p>
             )}
 
             {/* Add to Cart */}
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              fullWidth
-              startIcon={<AddShoppingCartIcon />}
+            <button
               onClick={handleAddToCart}
               disabled={!selectedVariant || selectedVariant.stock <= 0}
-              sx={{ py: 1.5, fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px' }}
+              className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
             >
+              <ShoppingCart className="w-5 h-5 mr-2" />
               เพิ่มลงในตะกร้า
-            </Button>
-          </Box>
-        </Box>
-      </Container>
-    </Box>
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

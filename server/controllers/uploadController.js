@@ -5,13 +5,10 @@ const path = require('path');
 // Configure storage for uploaded files
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Specify the directory where uploaded files will be stored
-    // Make sure this directory exists: backend/public/images
     cb(null, path.join(__dirname, '../public/images'));
   },
   filename: (req, file, cb) => {
-    // Generate a unique filename to prevent overwriting
-    // Example: image-1678888888888.jpg
+
     cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
   },
 });
@@ -21,7 +18,7 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5MB
   fileFilter: (req, file, cb) => {
-    // Allow only image files
+
     const filetypes = /jpeg|jpg|png|gif/;
     const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());

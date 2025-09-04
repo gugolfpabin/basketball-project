@@ -1,25 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  InputBase,
-  IconButton,
-  Menu,
-  MenuItem,
-  Card,
-  CardMedia,
-  CardContent,
-  Grid,
-  Container,
-  CircularProgress,
-} from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { ChevronDown, Search, Loader } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -30,7 +12,7 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(null); // null initially for 'all' products
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const apiBase = 'http://localhost:5000/api';
 
   // Categories for the dropdown filter
@@ -82,20 +64,16 @@ export default function Home() {
       let url = `${apiBase}/products`;
       const queryParams = new URLSearchParams();
 
-      // Always specify view=home for this page
       queryParams.append('view', 'home');
 
-      // Add categoryId filter if a specific category is selected (not 'all' or null)
       if (selectedCategoryId !== null) {
         queryParams.append('categoryId', selectedCategoryId);
       }
 
-      // Add search term filter if present
       if (searchTerm) {
         queryParams.append('searchTerm', searchTerm);
       }
 
-      // Append query parameters to URL
       if (queryParams.toString()) {
         url += `?${queryParams.toString()}`;
       }
@@ -140,230 +118,226 @@ export default function Home() {
   const displayedProducts = useMemo(() => {
     return products.map(product => {
       let displayPrice = 'N/A';
-      let displaySize = 'N/A'; // Default value for size
+      let displaySize = 'N/A';
 
       if (product.variants && product.variants.length > 0) {
-        // Find the variant with the minimum price
         const minPriceVariant = product.variants.reduce((minV, currentV) =>
           currentV.price < minV.price ? currentV : minV
         );
         displayPrice = minPriceVariant.price;
-        displaySize = minPriceVariant.size; // Get the size of this variant
+        displaySize = minPriceVariant.size;
       }
 
       return {
         ...product,
         displayPrice,
-        displaySize, // Add the display size to the product object
+        displaySize,
       };
     });
   }, [products]);
 
-
   return (
-    <Box sx={{ flexGrow: 1 }}>
+    <div className="flex-grow">
       {/* Navbar ด้านบน */}
-      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid #e0e0e0' }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <nav className="flex items-center justify-between px-6 py-4">
+          {/* Logo/Brand */}
+          <div className="flex-1">
+            <Link 
+              to="/" 
+              className="text-xl font-bold text-gray-900 no-underline hover:text-blue-600 transition-colors"
+            >
               Home
             </Link>
-          </Typography>
+          </div>
 
           {/* Category Dropdown */}
-          <Button
-            color="inherit"
-            endIcon={<KeyboardArrowDownIcon />}
-            onClick={handleMenuClickCategory}
-            sx={{ mx: 2 }}
-          >
-            {categories.find(cat => cat.categoryId === selectedCategoryId)?.name || 'หมวดหมู่'}
-          </Button>
-          <Menu
-            anchorEl={anchorElCategory}
-            open={Boolean(anchorElCategory)}
-            onClose={handleMenuCloseCategory}
-            MenuListProps={{ 'aria-labelledby': 'category-button' }}
-          >
-            {categories.map((cat) => (
-              <MenuItem
-                key={cat.id}
-                onClick={() => handleCategorySelect(cat.categoryId)}
-                selected={cat.categoryId === selectedCategoryId}
-              >
-                {cat.name}
-              </MenuItem>
-            ))}
-          </Menu>
+          <div className="relative mx-4">
+            <button
+              onClick={handleMenuClickCategory}
+              className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              <span>{categories.find(cat => cat.categoryId === selectedCategoryId)?.name || 'หมวดหมู่'}</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            
+            {/* Category Dropdown Menu */}
+            {anchorElCategory && (
+              <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="py-1">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => handleCategorySelect(cat.categoryId)}
+                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                        cat.categoryId === selectedCategoryId ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Search Bar */}
-          <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              bgcolor: '#f0f0f0',
-              borderRadius: '20px',
-              px: 1,
-              py: 0.5,
-              width: { xs: '150px', sm: '200px', md: '300px' }
-            }}>
-            <IconButton type="submit" sx={{ p: '10px' }} aria-label="search">
-              <SearchIcon />
-            </IconButton>
-            <InputBase
-              sx={{ ml: 1, flex: 1 }}
+          <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 w-48 sm:w-56 md:w-80">
+            <Search className="w-5 h-5 text-gray-500" />
+            <input
+              type="text"
               placeholder="Search"
-              inputProps={{ 'aria-label': 'search' }}
               value={searchTerm}
               onChange={handleSearchChange}
+              className="ml-3 flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-500"
             />
-          </Box>
+          </div>
 
           {/* Login/Register or User Profile Dropdown */}
-          <Box sx={{ ml: 3 }}>
+          <div className="ml-6">
             {user ? (
-              <>
-                <Button
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
+              <div className="relative">
+                <button
                   onClick={handleMenuClickUser}
-                  color="inherit"
-                  endIcon={<KeyboardArrowDownIcon />}
-                  sx={{ textTransform: 'none', fontSize: '1rem' }}
+                  className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
                 >
-                  {user.email}
-                </Button>
-                <Menu
-                  id="menu-appbar"
-                  anchorEl={anchorElUser}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  keepMounted
-                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                  open={Boolean(anchorElUser)}
-                  onClose={handleMenuCloseUser}
-                >
-                  {user.role === 1 && (
-                    <MenuItem onClick={handleMenuCloseUser} component={Link} to="/dashboard">
-                      Dashboard
-                    </MenuItem>
-                  )}
-                  <MenuItem onClick={handleMenuCloseUser} component={Link} to="/profile">
-                    ข้อมูลส่วนตัว
-                  </MenuItem>
-                  {user.role === 0 && (
-                    <MenuItem onClick={handleMenuCloseUser} component={Link} to="/orders">
-                      รายการสั่งซื้อ
-                    </MenuItem>
-                  )}
-                  <MenuItem onClick={handleLogout}>
-                    ออกจากระบบ
-                  </MenuItem>
-                </Menu>
-              </>
+                  <span className="text-base">{user.email}</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                
+                {/* User Dropdown Menu */}
+                {anchorElUser && (
+                  <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      {user.role === 1 && (
+                        <Link
+                          to="/dashboard"
+                          onClick={handleMenuCloseUser}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline"
+                        >
+                          Dashboard
+                        </Link>
+                      )}
+                      <Link
+                        to="/profile"
+                        onClick={handleMenuCloseUser}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline"
+                      >
+                        ข้อมูลส่วนตัว
+                      </Link>
+                      {user.role === 0 && (
+                        <Link
+                          to="/orders"
+                          onClick={handleMenuCloseUser}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors no-underline"
+                        >
+                          รายการสั่งซื้อ
+                        </Link>
+                      )}
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        ออกจากระบบ
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
-              <Box>
-                <Button component={Link} to="/register" color="inherit" sx={{ mr: 1 }}>
+              <div className="flex items-center space-x-3">
+                <Link
+                  to="/register"
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors no-underline"
+                >
                   สมัครสมาชิก
-                </Button>
-                <Button component={Link} to="/login" variant="contained" color="primary">
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors no-underline"
+                >
                   เข้าสู่ระบบ
-                </Button>
-              </Box>
+                </Link>
+              </div>
             )}
-          </Box>
-        </Toolbar>
-      </AppBar>
+          </div>
+        </nav>
+      </header>
+
+      {/* Click outside handler for dropdowns */}
+      {(anchorElCategory || anchorElUser) && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => {
+            handleMenuCloseCategory();
+            handleMenuCloseUser();
+          }}
+        />
+      )}
 
       {/* ส่วนเนื้อหาหลักสำหรับ สินค้า */}
-      <Container sx={{ py: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 4 }}>
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <h2 className="text-2xl font-bold mb-8 text-gray-900">
           {categories.find(cat => cat.categoryId === selectedCategoryId)?.name || 'สินค้า'}
-        </Typography>
+        </h2>
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
-            <CircularProgress />
-            <Typography sx={{ ml: 2 }}>กำลังโหลดสินค้า...</Typography>
-          </Box>
+          <div className="flex items-center justify-center min-h-48">
+            <Loader className="w-8 h-8 animate-spin text-blue-600" />
+            <span className="ml-3 text-gray-600">กำลังโหลดสินค้า...</span>
+          </div>
         ) : error ? (
-          <Box sx={{ width: '100%', textAlign: 'center', mt: 4 }}>
-            <Typography variant="h6" color="error">
+          <div className="text-center mt-8">
+            <h3 className="text-lg font-semibold text-red-600 mb-2">
               {error}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            </h3>
+            <p className="text-gray-500 text-sm">
               โปรดตรวจสอบว่า Backend Server ทำงานอยู่และฐานข้อมูลเชื่อมต่อถูกต้อง
-            </Typography>
-          </Box>
+            </p>
+          </div>
         ) : displayedProducts.length > 0 ? (
-          <Grid container spacing={3}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {displayedProducts.map((product) => (
-              <Grid item key={product.id} xs={12} sm={6} md={4} lg={3}>
-                <Card
-                  sx={{
-                    maxWidth: 345,
-                    height: 382,
-                    minHeight: 382,
-                    maxHeight: 382,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    cursor: 'pointer',
-                    overflow: 'hidden',
-                    border: '1px solid #e0e0e0'
-                  }}
-                  onClick={() => handleProductClick(product.id)}
-                >
-                  <CardMedia
-                    component="img"
-                    height={250}
-                    image={product.imageUrl || 'https://placehold.co/250x250/E0E0E0/333333?text=No+Image'}
+              <div
+                key={product.id}
+                onClick={() => handleProductClick(product.id)}
+                className="bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300 h-96 flex flex-col"
+              >
+                <div className="h-64 w-full overflow-hidden flex-shrink-0">
+                  <img
+                    src={product.imageUrl || 'https://placehold.co/250x250/E0E0E0/333333?text=No+Image'}
                     alt={product.name}
-                    sx={{ objectFit: 'cover', width: '100%', flexShrink: 0 }}
+                    className="w-full h-full object-cover"
                   />
-                  <CardContent
-                    sx={{
-                      height: 100,
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      flexShrink: 0
+                </div>
+                <div className="p-4 h-32 flex flex-col justify-between flex-shrink-0">
+                  <h3 
+                    className="font-bold text-gray-900 text-base leading-tight overflow-hidden"
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      lineHeight: '1.2em',
+                      height: '2.4em'
                     }}
                   >
-                    <Typography
-                      gutterBottom
-                      variant="h6"
-                      component="div"
-                      sx={{
-                        fontWeight: 'bold',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        lineHeight: '1.2em',
-                        height: '2.4em'
-                      }}
-                    >
-                      {product.name}
-                    </Typography>
-                    {/* Display Size */}
-                    
-                    <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
-                      {product.displayPrice} THB
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+                    {product.name}
+                  </h3>
+                  <p className="text-xl font-semibold text-blue-600 mt-2">
+                    {product.displayPrice} THB
+                  </p>
+                </div>
+              </div>
             ))}
-          </Grid>
+          </div>
         ) : (
-          <Box sx={{ width: '100%', textAlign: 'center', mt: 4 }}>
-            <Typography variant="h6" color="text.secondary">
+          <div className="text-center mt-8">
+            <h3 className="text-lg font-medium text-gray-500">
               ไม่พบสินค้าที่ตรงกับคำค้นหาหรือหมวดหมู่ที่เลือก
-            </Typography>
-          </Box>
+            </h3>
+          </div>
         )}
-      </Container>
-    </Box>
+      </main>
+    </div>
   );
 }

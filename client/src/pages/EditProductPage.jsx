@@ -1,303 +1,653 @@
-import React, { useState, useEffect } from 'react';
+// // src/pages/EditProductPage.jsx
+// import React, { useState, useEffect } from "react";
+// import { useParams, useNavigate, Link } from "react-router-dom";
+// import axios from "axios";
+// import { Loader2 } from "lucide-react";
+// import { styled } from "@mui/material/styles";
+// import {
+//   Container,
+//   Paper,
+//   Typography,
+//   TextField,
+//   Button,
+//   Box,
+//   CircularProgress,
+//   Alert,
+//   MenuItem,
+// } from "@mui/material";
+
+// const FormContainer = styled(Paper)(({ theme }) => ({
+//   padding: theme.spacing(4),
+//   marginTop: theme.spacing(4),
+//   marginBottom: theme.spacing(4),
+// }));
+
+// export default function EditProductPage() {
+//   const { id, variantId } = useParams();
+//   const navigate = useNavigate();
+
+//   const [product, setProduct] = useState(null);
+//   const [variant, setVariant] = useState(null);
+//   const [categories, setCategories] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [submitting, setSubmitting] = useState(false);
+//   const [error, setError] = useState(null);
+//   const [success, setSuccess] = useState(false);
+//   const [imageFile, setImageFile] = useState(null);
+//   const [imagePreview, setImagePreview] = useState(null);
+
+//   const apiBase = "http://localhost:5000/api";
+
+//   useEffect(() => {
+    
+//     const fetchData = async () => {
+//       try {
+//         setLoading(true);
+//         setError(null);
+        
+//         // ดึงข้อมูลสินค้าและหมวดหมู่พร้อมกัน
+//         const [productRes, categoriesRes] = await Promise.all([
+//           axios.get(`${apiBase}/products/${id}`),
+//           axios.get(`${apiBase}/categories`),
+//         ]);
+//         console.log("productRes.data", productRes.data);
+
+//         const productData = productRes.data;
+//         setCategories(categoriesRes.data);
+
+//         // หา variant ที่ตรงกับ variantId ที่ส่งมาจาก URL
+//         const foundVariant = productData.variants.find(
+//           (v) => v.variantId == variantId
+//         );
+
+//         if (foundVariant) {
+//           setProduct(productData);
+//           setVariant(foundVariant);
+//           // ตั้งค่า preview รูปภาพเริ่มต้นด้วยรูปของ variant นั้นๆ
+//           setImagePreview(foundVariant.Variant_Image_Url);
+//         } else {
+//           setError("ไม่พบ Variant ของสินค้าที่ระบุ");
+//         }
+//       } catch (err) {
+//         setError("ไม่สามารถโหลดข้อมูลสินค้าได้ โปรดตรวจสอบ Console");
+//         console.error("Error fetching data:", err);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+//     fetchData();
+//   }, [id, variantId]);
+
+//   const handleProductChange = (e) => {
+//     setProduct({ ...product, [e.target.name]: e.target.value });
+//   };
+
+//   const handleVariantChange = (e) => {
+//     setVariant({ ...variant, [e.target.name]: e.target.value });
+//   };
+
+//   const handleFileChange = (e) => {
+//     const file = e.target.files[0];
+//     if (file) {
+//       setImageFile(file);
+//       setImagePreview(URL.createObjectURL(file));
+//     } else {
+//       setImageFile(null);
+//       setImagePreview(variant.Variant_Image_Url);
+//     }
+//   };
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     setSubmitting(true);
+//     setError(null);
+//     setSuccess(false);
+
+//     if (!product || !variant) {
+//         setError("ข้อมูลสินค้าไม่สมบูรณ์");
+//         setSubmitting(false);
+//         return;
+//     }
+
+//     try {
+//       let finalImageUrl = variant.Variant_Image_Url;
+
+//       // 1. ถ้ามีการเลือกไฟล์รูปภาพใหม่ ให้อัปโหลดก่อน
+//       if (imageFile) {
+//         const formData = new FormData();
+//         formData.append("image", imageFile);
+
+//         try {
+//             const uploadRes = await axios.post(`${apiBase}/upload-images`, formData, {
+//               headers: { "Content-Type": "multipart/form-data" },
+//             });
+
+//             if (uploadRes.data.success) {
+//               finalImageUrl = uploadRes.data.imageUrl;
+//             } else {
+//               throw new Error(uploadRes.data.message || 'Image upload failed');
+//             }
+//         } catch (uploadErr) {
+//             console.error("Error uploading image:", uploadErr.response ? uploadErr.response.data : uploadErr.message);
+//             throw new Error("ไม่สามารถอัปโหลดรูปภาพได้");
+//         }
+//       }
+      
+//       // 2. สร้าง payload สำหรับการอัปเดตข้อมูลสินค้าและ Variant ที่แก้ไขเท่านั้น
+//       const payload = {
+//         productName: product.Product_Name,
+//         productDescription: product.Product_Description,
+//         categoryId: product.Category_ID,
+//         variants: [
+//           {
+//             variantId: variant.Variant_ID,
+//             size: variant.Size,
+//             color: variant.Color,
+//             stock: parseInt(variant.Stock),
+//             price: parseFloat(variant.Price),
+//             cost: parseFloat(variant.Cost),
+//             variantImageUrl: finalImageUrl,
+//           },
+//         ],
+//       };
+
+//       // 3. ส่งข้อมูลทั้งหมดไปยัง endpoint update product
+//       await axios.put(`${apiBase}/products/${id}`, payload, {
+//         headers: { "Content-Type": "application/json" },
+//       });
+
+//       setSuccess(true);
+//       setTimeout(() => {
+//         navigate("/dashboard");
+//       }, 1500);
+//     } catch (err) {
+//       setError("ไม่สามารถบันทึกการแก้ไขได้ โปรดตรวจสอบ Console");
+//       console.error("Error updating product:", err.response ? err.response.data : err.message);
+//     } finally {
+//       setSubmitting(false);
+//     }
+//   };
+
+//   if (loading || !product || !variant) {
+//     return (
+//       <div className="flex items-center justify-center h-64">
+//         <Loader2 className="animate-spin w-8 h-8 text-gray-500" />
+//       </div>
+//     );
+//   }
+
+//   if (error) {
+//     return (
+//       <Container maxWidth="sm">
+//         <Box sx={{ mt: 4 }}>
+//           <Alert severity="error">{error}</Alert>
+//         </Box>
+//       </Container>
+//     );
+//   }
+
+//   return (
+//     <div className="max-w-3xl mx-auto p-6">
+//       <h2 className="text-2xl font-bold mb-6">แก้ไขสินค้า</h2>
+//       {success && <Alert severity="success" sx={{ mb: 2 }}>บันทึกการแก้ไขเรียบร้อยแล้ว!</Alert>}
+//       <form onSubmit={handleSubmit} className="space-y-4">
+//         {/* ชื่อสินค้า */}
+//         <div>
+//           <label className="block font-medium">ชื่อสินค้า</label>
+//           <input
+//             type="text"
+//             name="Product_Name"
+//             value={product.Product_Name || ""}
+//             onChange={handleProductChange}
+//             className="w-full border rounded-lg p-2"
+//             required
+//           />
+//         </div>
+        
+//         {/* คำอธิบาย */}
+//         <div>
+//           <label className="block font-medium">รายละเอียดสินค้า</label>
+//           <textarea
+//             name="Product_Description"
+//             value={product.Product_Description || ""}
+//             onChange={handleProductChange}
+//             className="w-full border rounded-lg p-2"
+//           />
+//         </div>
+        
+//         {/* หมวดหมู่ */}
+//         <div>
+//           <label className="block font-medium">หมวดหมู่</label>
+//           <select
+//             name="Category_ID"
+//             value={product.Category_ID || ""}
+//             onChange={handleProductChange}
+//             className="w-full border rounded-lg p-2"
+//           >
+//             <option value="">-- เลือกหมวดหมู่ --</option>
+//             {categories.map((cat) => (
+//               <option key={cat.id} value={cat.id}>
+//                 {cat.categoryName}
+//               </option>
+//             ))}
+//           </select>
+//         </div>
+        
+//         {/* ข้อมูล Variant */}
+//         <h3 className="text-xl font-bold pt-4">ข้อมูล Variant</h3>
+//         <div>
+//           <label className="block font-medium">ขนาด (Size)</label>
+//           <input
+//             type="text"
+//             name="Size"
+//             value={variant.Size || ""}
+//             onChange={handleVariantChange}
+//             className="w-full border rounded-lg p-2"
+//             required
+//           />
+//         </div>
+//         <div>
+//           <label className="block font-medium">สี (Color)</label>
+//           <input
+//             type="text"
+//             name="Color"
+//             value={variant.Color || ""}
+//             onChange={handleVariantChange}
+//             className="w-full border rounded-lg p-2"
+//             required
+//           />
+//         </div>
+//         <div>
+//           <label className="block font-medium">ราคา</label>
+//           <input
+//             type="number"
+//             name="Price"
+//             value={variant.Price || ""}
+//             onChange={handleVariantChange}
+//             className="w-full border rounded-lg p-2"
+//             required
+//           />
+//         </div>
+//         <div>
+//           <label className="block font-medium">ต้นทุน</label>
+//           <input
+//             type="number"
+//             name="Cost"
+//             value={variant.Cost || ""}
+//             onChange={handleVariantChange}
+//             className="w-full border rounded-lg p-2"
+//             required
+//           />
+//         </div>
+//         <div>
+//           <label className="block font-medium">จำนวนสต็อก</label>
+//           <input
+//             type="number"
+//             name="Stock"
+//             value={variant.Stock || ""}
+//             onChange={handleVariantChange}
+//             className="w-full border rounded-lg p-2"
+//             required
+//           />
+//         </div>
+
+//         {/* รูปภาพ */}
+//         <div>
+//           <label className="block font-medium">รูปภาพสินค้า</label>
+//           {(imagePreview) && (
+//             <img
+//               src={imagePreview}
+//               alt="Product preview"
+//               className="w-32 h-32 object-cover mb-2 rounded"
+//             />
+//           )}
+//           <input type="file" accept="image/*" onChange={handleFileChange} />
+//         </div>
+
+//         {/* ปุ่มบันทึก */}
+//         <div className="flex justify-end gap-4">
+//           <Link
+//             to="/dashboard"
+//             className="px-4 py-2 bg-gray-400 text-white rounded-lg"
+//           >
+//             ยกเลิก
+//           </Link>
+//           <button
+//             type="submit"
+//             disabled={submitting}
+//             className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2"
+//           >
+//             {submitting && <Loader2 className="animate-spin w-4 h-4" />}
+//             บันทึกการแก้ไข
+//           </button>
+//         </div>
+//       </form>
+//     </div>
+//   );
+// }
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import axios from "axios";
+import { Loader2 } from "lucide-react";
+import { styled } from "@mui/material/styles";
 import {
-    Container,
-    Paper,
-    TextField,
-    Button,
-    Box,
-    Typography,
-    Grid,
-    InputAdornment,
-    CircularProgress,
-    Alert,
-} from '@mui/material';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-material';
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Box,
+  CircularProgress,
+  Alert,
+  MenuItem,
+} from "@mui/material";
 
-// Dark theme to maintain consistent styling
-// ธีมสีเข้มเพื่อความสอดคล้อง
-const darkTheme = createTheme({
-    palette: {
-        mode: 'dark',
-        primary: {
-            main: '#bb86fc',
-        },
-        secondary: {
-            main: '#03dac6',
-        },
-        background: {
-            default: '#121212',
-            paper: '#1e1e1e',
-        },
-    },
-    typography: {
-        fontFamily: 'Inter, sans-serif',
-    },
-    components: {
-        MuiButton: {
-            styleOverrides: {
-                root: {
-                    textTransform: 'none',
-                    borderRadius: '20px',
-                },
-            },
-        },
-        MuiPaper: {
-            styleOverrides: {
-                root: {
-                    borderRadius: '8px',
-                },
-            },
-        },
-    },
-});
+const FormContainer = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  marginTop: theme.spacing(4),
+  marginBottom: theme.spacing(4),
+}));
 
-// Mock data to simulate fetching a single product from the database
-// ข้อมูลจำลองเพื่อใช้ในการสาธิตการดึงข้อมูลสินค้าจากฐานข้อมูล
-const mockAllProducts = [
-    { variantId: 105, productId: 1, productName: 'LA Lakers LeBron James Test test test', size: 'M', color: 'Yellow', stock: 15, price: 2790.00 },
-    { variantId: 106, productId: 2, productName: 'Milwaukee Bucks Giannis Antetokounmpo Jersey', size: 'M', color: 'Black', stock: 30, price: 2790.00 },
-    { variantId: 107, productId: 2, productName: 'Milwaukee Bucks Giannis Antetokounmpo Jersey', size: 'L', color: 'Black', stock: 20, price: 2790.00 },
-    { variantId: 108, productId: 3, productName: 'Golden State Warriors Stephen Curry Jersey', size: 'S', color: 'Blue', stock: 40, price: 2790.00 },
-    { variantId: 110, productId: 4, productName: 'Classic Basketball T-Shirt', size: 'S', color: 'White', stock: 100, price: 690.00 },
-    { variantId: 112, productId: 5, productName: 'Graphic Hoop T-Shirt', size: 'M', color: 'Black', stock: 70, price: 750.00 },
-    { variantId: 101, productId: 1, productName: 'LA Lakers LeBron James Test test test', size: 'L', color: 'Yellow', stock: 10, price: 2790.00 },
-];
+export default function EditProductPage() {
+  const { id, variantId } = useParams();
+  const navigate = useNavigate();
 
-const mockProductDescriptions = {
-    1: 'เสื้อบาสเกตบอลทีม Los Angeles',
-    2: 'เสื้อบาสเกตบอลทีม Milwaukee Bucks ของ Giannis Antetokounmpo ดีไซน์ทันสมัย ใส่สบาย',
-    3: 'เสื้อบาสเกตบอลทีม Golden State Warriors ของ Stephen Curry รุ่น Association Edition',
-    4: 'เสื้อยืดบาสเกตบอลคลาสสิก เนื้อผ้านุ่ม ใส่สบาย เหมาะสำหรับทุกกิจกรรม',
-    5: 'เสื้อยืดบาสเกตบอลลายกราฟิก ดีไซน์ไม่ซ้ำใคร',
-};
+  const [product, setProduct] = useState(null);
+  const [variant, setVariant] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
-/**
- * EditProductPage component for editing product details.
- * This component will fetch the existing product data based on `productId` and `variantId`
- * and display a form to edit the details.
- *
- * @param {object} props - The component props.
- * @param {number} props.productId - The ID of the product.
- * @param {number} props.variantId - The ID of the specific product variant.
- * @param {function} props.onBack - Function to call when the user wants to go back.
- */
-export default function EditProductPage({ productId, variantId, onBack }) {
-    // State to hold the form data
-    // สถานะสำหรับเก็บข้อมูลในฟอร์ม
-    const [formData, setFormData] = useState({
-        productName: '',
-        productDescription: '',
-        size: '',
-        color: '',
-        stock: 0,
-        price: 0,
-    });
+  const apiBase = "http://localhost:5000/api";
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    // useEffect hook to fetch data when the component mounts or props change
-    // ใช้ useEffect เพื่อดึงข้อมูลเมื่อคอมโพเนนต์ถูกโหลดหรือ props มีการเปลี่ยนแปลง
-    useEffect(() => {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
         setLoading(true);
         setError(null);
 
-        // Simulate fetching data for the specific product variant from your database
-        // This is where you would replace mockAllProducts with your actual API call.
-        // จำลองการดึงข้อมูลสำหรับสินค้า variant ที่ต้องการแก้ไขจากฐานข้อมูลของคุณ
-        // ตรงนี้คือส่วนที่คุณจะต้องเปลี่ยนไปใช้การเรียก API จริงๆ
-        const productData = mockAllProducts.find(
-            item => item.productId === productId && item.variantId === variantId
+        // ดึงข้อมูลสินค้าและหมวดหมู่พร้อมกัน
+        const [productRes, categoriesRes] = await Promise.all([
+          // แก้ไขให้เรียกใช้ getOneProduct ที่แก้ไขแล้ว
+          axios.get(`${apiBase}/products/${id}`),
+          axios.get(`${apiBase}/categories`),
+        ]);
+        console.log("productRes.data", productRes.data);
+
+        const productData = productRes.data;
+        setCategories(categoriesRes.data);
+
+        // หา variant ที่ตรงกับ variantId ที่ส่งมาจาก URL
+        const foundVariant = productData.variants.find(
+          (v) => v.variantId == variantId
         );
 
-        if (productData) {
-            // Simulate an API call with a delay
-            // จำลองการเรียก API ด้วยการหน่วงเวลา
-            setTimeout(() => {
-                setFormData({
-                    productName: productData.productName,
-                    // Assume productDescription is from a separate lookup
-                    // สมมติว่ารายละเอียดสินค้ามาจากข้อมูลอีกชุดหนึ่ง
-                    productDescription: mockProductDescriptions[productData.productId] || '',
-                    size: productData.size,
-                    color: productData.color,
-                    stock: productData.stock,
-                    price: productData.price,
-                });
-                setLoading(false);
-            }, 500); // 0.5 second delay
+        if (foundVariant) {
+          setProduct(productData);
+          setVariant(foundVariant);
+          // ตั้งค่า preview รูปภาพเริ่มต้นด้วยรูปของ variant นั้นๆ
+          setImagePreview(foundVariant.variantImageUrl);
         } else {
-            // Handle case where product is not found
-            // จัดการกรณีที่ไม่พบสินค้า
-            setError('ไม่พบข้อมูลสินค้าที่ต้องการแก้ไข');
-            setLoading(false);
+          setError("ไม่พบ Variant ของสินค้าที่ระบุ");
         }
-    }, [productId, variantId]); // Dependency array to re-run effect if these props change
-
-    // Handle form input changes
-    // จัดการการเปลี่ยนแปลงของข้อมูลในฟอร์ม
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+      } catch (err) {
+        setError("ไม่สามารถโหลดข้อมูลสินค้าได้ โปรดตรวจสอบ Console");
+        console.error("Error fetching data:", err);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchData();
+  }, [id, variantId]);
 
-    // Handle form submission (saving the data)
-    // จัดการการบันทึกข้อมูล
-    const handleSave = () => {
-        console.log("บันทึกการแก้ไข:", { productId, variantId, ...formData });
-        // In a real application, you would make an API call to update the data here.
-        // ในแอปพลิเคชันจริง คุณจะเรียก API เพื่ออัปเดตข้อมูลที่นี่
-        // Example:
-        // axios.put(`/api/products/${productId}/variants/${variantId}`, formData).then(onBack);
+  const handleProductChange = (e) => {
+    setProduct({ ...product, [e.target.name]: e.target.value });
+  };
 
-        // After saving, go back to the previous page
-        // หลังจากบันทึกแล้ว ให้กลับไปหน้าก่อนหน้า
-        if (onBack) {
-            onBack();
-        }
-    };
+  const handleVariantChange = (e) => {
+    setVariant({ ...variant, [e.target.name]: e.target.value });
+  };
 
-    // Show a loading spinner while fetching data
-    // แสดงสัญลักษณ์การโหลดขณะที่กำลังดึงข้อมูล
-    if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-                <CircularProgress />
-                <Typography sx={{ ml: 2 }}>กำลังโหลดข้อมูลสินค้า...</Typography>
-            </Box>
-        );
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    } else {
+      setImageFile(null);
+      setImagePreview(variant.variantImageUrl);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setSuccess(false);
+
+    if (!product || !variant) {
+      setError("ข้อมูลสินค้าไม่สมบูรณ์");
+      setSubmitting(false);
+      return;
     }
 
-    // Show an error message if data could not be fetched
-    // แสดงข้อผิดพลาดหากไม่สามารถดึงข้อมูลได้
-    if (error) {
-        return (
-            <Container maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="error">{error}</Alert>
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
-                    <Button
-                        variant="contained"
-                        startIcon={<ArrowBackIcon />}
-                        onClick={onBack}
-                    >
-                        กลับไปหน้า Dashboard
-                    </Button>
-                </Box>
-            </Container>
-        );
-    }
+    try {
+      let finalImageUrl = variant.variantImageUrl;
 
-    // Render the edit form with pre-filled data
-    // แสดงฟอร์มแก้ไขพร้อมข้อมูลเก่า
+      // 1. ถ้ามีการเลือกไฟล์รูปภาพใหม่ ให้อัปโหลดก่อน
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("image", imageFile);
+
+        try {
+          const uploadRes = await axios.post(`${apiBase}/upload-images`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+
+          if (uploadRes.data.success) {
+            finalImageUrl = uploadRes.data.imageUrl;
+          } else {
+            throw new Error(uploadRes.data.message || 'Image upload failed');
+          }
+        } catch (uploadErr) {
+          console.error("Error uploading image:", uploadErr.response ? uploadErr.response.data : uploadErr.message);
+          throw new Error("ไม่สามารถอัปโหลดรูปภาพได้");
+        }
+      }
+      
+      // 2. สร้าง payload สำหรับการอัปเดตข้อมูลสินค้าและ Variant ที่แก้ไขเท่านั้น
+      const payload = {
+        productName: product.name,
+        productDescription: product.description,
+        categoryId: product.categoryId,
+        variants: [
+          {
+            variantId: variant.variantId,
+            size: variant.size,
+            color: variant.color,
+            stock: parseInt(variant.stock),
+            price: parseFloat(variant.price),
+            cost: parseFloat(variant.cost),
+            variantImageUrl: finalImageUrl,
+          },
+        ],
+      };
+
+      // 3. ส่งข้อมูลทั้งหมดไปยัง endpoint update product
+      await axios.put(`${apiBase}/products/${id}`, payload, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      setSuccess(true);
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1500);
+    } catch (err) {
+      setError("ไม่สามารถบันทึกการแก้ไขได้ โปรดตรวจสอบ Console");
+      console.error("Error updating product:", err.response ? err.response.data : err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading || !product || !variant) {
     return (
-        <ThemeProvider theme={darkTheme}>
-            <CssBaseline />
-            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-                <Paper elevation={3} sx={{ p: 4, borderRadius: '8px' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
-                            แก้ไขสินค้า
-                        </Typography>
-                        <Button
-                            variant="outlined"
-                            startIcon={<ArrowBackIcon />}
-                            onClick={onBack}
-                        >
-                            กลับไปหน้า Dashboard
-                        </Button>
-                    </Box>
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="ชื่อสินค้า"
-                                name="productName"
-                                value={formData.productName}
-                                onChange={handleChange}
-                                margin="normal"
-                                variant="outlined"
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="ราคา (บาท)"
-                                name="price"
-                                type="number"
-                                value={formData.price}
-                                onChange={handleChange}
-                                margin="normal"
-                                variant="outlined"
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start">THB</InputAdornment>,
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="รายละเอียดสินค้า"
-                                name="productDescription"
-                                value={formData.productDescription}
-                                onChange={handleChange}
-                                margin="normal"
-                                variant="outlined"
-                                multiline
-                                rows={4}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <TextField
-                                fullWidth
-                                label="ขนาด"
-                                name="size"
-                                value={formData.size}
-                                onChange={handleChange}
-                                margin="normal"
-                                variant="outlined"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <TextField
-                                fullWidth
-                                label="สี"
-                                name="color"
-                                value={formData.color}
-                                onChange={handleChange}
-                                margin="normal"
-                                variant="outlined"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={6}>
-                            <TextField
-                                fullWidth
-                                label="จำนวนคงเหลือ"
-                                name="stock"
-                                type="number"
-                                value={formData.stock}
-                                onChange={handleChange}
-                                margin="normal"
-                                variant="outlined"
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    startIcon={<SaveIcon />}
-                                    onClick={handleSave}
-                                    sx={{ borderRadius: '20px', px: 3 }}
-                                >
-                                    บันทึกการแก้ไข
-                                </Button>
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </Paper>
-            </Container>
-        </ThemeProvider>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin w-8 h-8 text-gray-500" />
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="sm">
+        <Box sx={{ mt: 4 }}>
+          <Alert severity="error">{error}</Alert>
+        </Box>
+      </Container>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-6">แก้ไขสินค้า</h2>
+      {success && <Alert severity="success" sx={{ mb: 2 }}>บันทึกการแก้ไขเรียบร้อยแล้ว!</Alert>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ชื่อสินค้า */}
+        <div>
+          <label className="block font-medium">ชื่อสินค้า</label>
+          <input
+            type="text"
+            name="name"
+            value={product.name || ""}
+            onChange={handleProductChange}
+            className="w-full border rounded-lg p-2"
+            required
+          />
+        </div>
+        
+        {/* คำอธิบาย */}
+        <div>
+          <label className="block font-medium">รายละเอียดสินค้า</label>
+          <textarea
+            name="description"
+            value={product.description || ""}
+            onChange={handleProductChange}
+            className="w-full border rounded-lg p-2"
+          />
+        </div>
+        
+        {/* หมวดหมู่ */}
+        <div>
+          <label className="block font-medium">หมวดหมู่</label>
+          <select
+            name="categoryId"
+            value={product.categoryId || ""}
+            onChange={handleProductChange}
+            className="w-full border rounded-lg p-2"
+          >
+            <option value="">-- เลือกหมวดหมู่ --</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.categoryName}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {/* ข้อมูล Variant */}
+        <h3 className="text-xl font-bold pt-4">ข้อมูล Variant</h3>
+        <div>
+          <label className="block font-medium">ขนาด (Size)</label>
+          <input
+            type="text"
+            name="size"
+            value={variant.size || ""}
+            onChange={handleVariantChange}
+            className="w-full border rounded-lg p-2"
+            required
+          />
+        </div>
+        <div>
+          <label className="block font-medium">สี (Color)</label>
+          <input
+            type="text"
+            name="color"
+            value={variant.color || ""}
+            onChange={handleVariantChange}
+            className="w-full border rounded-lg p-2"
+            required
+          />
+        </div>
+        <div>
+          <label className="block font-medium">ราคา</label>
+          <input
+            type="number"
+            name="price"
+            value={variant.price || ""}
+            onChange={handleVariantChange}
+            className="w-full border rounded-lg p-2"
+            required
+          />
+        </div>
+        <div>
+          <label className="block font-medium">ต้นทุน</label>
+          <input
+            type="number"
+            name="cost"
+            value={variant.cost || ""}
+            onChange={handleVariantChange}
+            className="w-full border rounded-lg p-2"
+            required
+          />
+        </div>
+        <div>
+          <label className="block font-medium">จำนวนสต็อก</label>
+          <input
+            type="number"
+            name="stock"
+            value={variant.stock || ""}
+            onChange={handleVariantChange}
+            className="w-full border rounded-lg p-2"
+            required
+          />
+        </div>
+
+        {/* รูปภาพ */}
+        <div>
+          <label className="block font-medium">รูปภาพสินค้า</label>
+          {(imagePreview) && (
+            <img
+              src={imagePreview}
+              alt="Product preview"
+              className="w-32 h-32 object-cover mb-2 rounded"
+            />
+          )}
+          <input type="file" accept="image/*" onChange={handleFileChange} />
+        </div>
+
+        {/* ปุ่มบันทึก */}
+        <div className="flex justify-end gap-4">
+          <Link
+            to="/dashboard"
+            className="px-4 py-2 bg-gray-400 text-white rounded-lg"
+          >
+            ยกเลิก
+          </Link>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2"
+          >
+            {submitting && <Loader2 className="animate-spin w-4 h-4" />}
+            บันทึกการแก้ไข
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }
