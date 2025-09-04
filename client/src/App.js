@@ -6,6 +6,7 @@ import Home from './Home';
 import Register from './components/Register.jsx'; 
 import Login from './components/login.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import Layout from './components/Layout';
 
 import ProductDetailPage from './pages/ProductDetailPage';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
