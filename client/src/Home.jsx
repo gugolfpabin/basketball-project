@@ -102,10 +102,8 @@ export default function Home() {
 
     return (
         <div className="flex flex-col min-h-screen bg-gray-50">
-            {/* --- Navbar (กลับมาอยู่ในหน้า Home เหมือนเดิม) --- */}
             <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
                 <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
-                    {/* Logo/Brand */}
                     <div className="flex items-center gap-8">
                         <Link to="/" className="text-xl font-bold text-gray-900 no-underline hover:text-blue-600">
                             Home

@@ -209,6 +209,25 @@ export default function AdminDashboardPage() {
             <ListItemText primary="สินค้า" sx={{ color: 'white' }} />
           </ListItemButton>
         </ListItem>
+
+        <ListItem disablePadding component={Link} to="/orders">
+          <ListItemButton>
+            <ListItemIcon>
+              <InventoryIcon sx={{ color: 'white' }} />
+            </ListItemIcon>
+            <ListItemText primary="จัดการข้อมูลการสั่งซื้อ" sx={{ color: 'white' }} />
+          </ListItemButton>
+        </ListItem>
+
+        <ListItem disablePadding component={Link} to="/reports">
+          <ListItemButton>
+            <ListItemIcon>
+              <InventoryIcon sx={{ color: 'white' }} />
+            </ListItemIcon>
+            <ListItemText primary="รายงานสินค้า" sx={{ color: 'white' }} />
+          </ListItemButton>
+        </ListItem>
+
       </List>
     </Box>
   );

@@ -92,7 +92,7 @@ export default function ProductDetailPage() {
         }
     };
     
-    const handleAddToCart = () => {
+    const handleAddToCart =  async () => {
         if (!user) {
         setShowLoginModal(true);
         return;
@@ -106,7 +106,41 @@ export default function ProductDetailPage() {
       alert('สินค้าหมดสต็อก');
       return;
     }
-    alert(`เพิ่ม ${product.name} (สี: ${selectedVariant.color}, ขนาด: ${selectedVariant.size}) ลงในตะกร้าแล้ว!`);
+    console.log('ตรวจสอบ object selectedVariant ทั้งหมด:', selectedVariant);
+    console.log('ข้อมูลที่จะส่งไป Backend:', {
+        variantId: selectedVariant.Variant_ID,
+        quantity: 1
+    });
+     try {
+        const token = localStorage.getItem('token'); // ดึง token ที่เก็บไว้ตอน login
+        if (!token) {
+            alert('Session หมดอายุ, กรุณาเข้าสู่ระบบใหม่');
+            navigate('/login');
+            return;
+        }
+
+        const response = await axios.post(
+            `${apiBase}/cart/add`, // Endpoint ที่เราจะสร้าง
+            {
+                variantId: selectedVariant.variantId, // ส่ง Variant_ID ไป
+                quantity: 1 // กำหนดจำนวนเบื้องต้นเป็น 1
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}` // ส่ง token ไปใน header
+                }
+            }
+        );
+
+        // ถ้าสำเร็จ แสดงข้อความจาก server
+        alert(response.data.message); 
+        // อนาคต: อาจจะอัปเดตตัวเลขบนไอคอนตะกร้าสินค้าตรง Navbar
+
+    } catch (err) {
+        // ถ้าเกิดข้อผิดพลาด
+        const errorMessage = err.response?.data?.message || 'เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า';
+        alert(errorMessage);
+    }
   };
 
       const handleLogout = () => {
