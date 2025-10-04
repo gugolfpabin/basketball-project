@@ -1,5 +1,5 @@
     // server/controllers/productController.js
-    const db = require('../db'); 
+    const db = require('../../db'); 
     const categoryIdToNameMap = {
         1: 'เสื้อบาสเกตบอล',
         2: 'เสื้อ T-Shirt',

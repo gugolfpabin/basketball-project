@@ -31,6 +31,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Pagination,
+  Stack,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
@@ -62,8 +64,10 @@ export default function AdminDashboardPage() {
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const apiBase = 'http://localhost:5000/api';
+  const itemsPerPage = 20;
 
   const categories = [
     { id: 0, name: 'ทั้งหมด' },
@@ -135,7 +139,10 @@ export default function AdminDashboardPage() {
     }
   }, [navigate]);
 
-  const handleSearchChange = (e) => setSearchTerm(e.target.value);
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page when search changes
+  };
 
   // --- Drawer & Category Handlers ---
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
@@ -143,6 +150,7 @@ export default function AdminDashboardPage() {
   const handleCategoryDropdownClose = () => setAnchorElCategoryDropdown(null);
   const handleCategoryFilterSelect = (categoryId) => {
     setSelectedCategoryFilter(categoryId);
+    setCurrentPage(1); // Reset to first page when filter changes
     handleCategoryDropdownClose();
   };
 
@@ -189,7 +197,20 @@ export default function AdminDashboardPage() {
     setItemToDelete(null);
   };
 
-  const displayedProducts = useMemo(() => products, [products]);
+  // --- Pagination Handlers ---
+  const handlePageChange = (event, page) => {
+    setCurrentPage(page);
+  };
+
+  // --- Paginated Products ---
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return products.slice(startIndex, endIndex);
+  }, [products, currentPage, itemsPerPage]);
+
+  const displayedProducts = useMemo(() => paginatedProducts, [paginatedProducts]);
 
   // --- Drawer JSX ---
   const drawer = (
@@ -210,7 +231,7 @@ export default function AdminDashboardPage() {
           </ListItemButton>
         </ListItem>
 
-        <ListItem disablePadding component={Link} to="/orders">
+        <ListItem disablePadding component={Link} to="/admin/orders">
           <ListItemButton>
             <ListItemIcon>
               <InventoryIcon sx={{ color: 'white' }} />
@@ -236,7 +257,7 @@ export default function AdminDashboardPage() {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
         <CircularProgress />
-        <Typography sx={{ ml: 2 }}>กำลังโหลดข้อมูล Dashboard...</Typography>
+        <Typography sx={{ ml: 2 }}>กำลังโหลดข้อมูล สินค้า...</Typography>
       </Box>
     );
   }
@@ -314,7 +335,14 @@ export default function AdminDashboardPage() {
 
       {/* Main */}
       <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, mt: '64px' }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', mb: 4 }}>จัดการสินค้า</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+            จัดการสินค้า
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            แสดง {displayedProducts.length} จาก {products.length} รายการ
+          </Typography>
+        </Box>
 
         <TableContainer component={Paper} elevation={3} sx={{ borderRadius: '8px' }}>
           <Table sx={{ minWidth: 650 }}>
@@ -362,6 +390,23 @@ export default function AdminDashboardPage() {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <Stack spacing={2}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                size="large"
+                showFirstButton
+                showLastButton
+              />
+            </Stack>
+          </Box>
+        )}
       </Box>
 
       {/* Delete Dialog */}

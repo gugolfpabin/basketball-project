@@ -10,11 +10,12 @@ const db = require('./db');
 
 const authRoutes = require('./routes/authRoutes');
 const locationRoutes = require('./routes/locationRoutes');
-const productRoutes = require('./routes/productRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const cartRoutes = require('./routes/cartRoutes');
-const orderRoutes = require('./routes/orderRoutes');
+const productRoutes = require('./routes/admin/productRoutes');
+const orderRoutes = require('./routes/admin/orderRoutes');
+const adminRoutes = require('./routes/admin/adminRoutes');
 
 const app = express();
 
@@ -31,7 +32,7 @@ app.use('/api', productRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
-
+app.use('/api/admin', adminRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

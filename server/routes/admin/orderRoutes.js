@@ -1,8 +1,8 @@
 // server/routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
-const orderController = require('../controllers/orderController');
-const verifyToken = require('../middleware/authMiddleware');
+const orderController = require('../../controllers/admin/orderController');
+const verifyToken = require('../../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
 

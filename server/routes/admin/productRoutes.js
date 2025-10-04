@@ -1,8 +1,10 @@
 //server/routes/productRoutes.js
 const express = require('express');
 const router = express.Router();
-const productController = require('../controllers/productController'); 
-const uploadController = require('../controllers/uploadController');
+const productController = require('../../controllers/admin/productController');
+
+const uploadController = require('../../controllers/admin/uploadController');
+
 
     
 router.get('/products', productController.getAllProducts);

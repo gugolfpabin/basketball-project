@@ -14,6 +14,7 @@ import AddProductPage from './pages/AddProductPage.jsx';
 import EditProductPage from './pages/EditProductPage.jsx';
 import CartPage from './pages/CartPage';
 import ManualPaymentPage from './pages/ManualPaymentPage';
+import AdminOrderListPage from './pages/AdminOrderListPage';
 
 function App() {
   return (
@@ -35,7 +36,7 @@ function App() {
           <Route path="/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/products/add" element={<AddProductPage />} />
           <Route path="/admin/products/edit/:id/variant/:variantId" element={<EditProductPage />} />
-
+          <Route path="/admin/orders" element={<AdminOrderListPage />} />
         </Route>
        
         

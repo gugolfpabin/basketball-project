@@ -1,5 +1,5 @@
 // server/controllers/orderController.js
-const db = require('../db');
+const db = require('../../db');
 const generatePayload = require('promptpay-qr');
 const qrcode = require('qrcode');
 
