@@ -132,12 +132,12 @@ exports.getOneProduct = async (req, res) => {
         SELECT
             p.Product_ID, p.ProductName, p.ProductDescription, p.Category_ID,
             pv.Variant_ID, pv.Size, pv.Color, pv.Stock, pv.Price, pv.Cost,
-            pic.PictureURL AS VariantImageURL
+            pic.PictureURL, pic.ImageType, pic.Color as ImageColor
         FROM product p
         LEFT JOIN product_variants pv ON p.Product_ID = pv.Product_ID
         LEFT JOIN picture pic ON pv.Variant_ID = pic.Variant_ID
         WHERE p.Product_ID = ?
-        ORDER BY pv.Variant_ID ASC;
+        ORDER BY pv.Variant_ID ASC, pic.ImageType ASC;
     `;
 
     try {
@@ -158,15 +158,37 @@ exports.getOneProduct = async (req, res) => {
             variants: [],
         };
 
+        // จัดกลุ่มข้อมูลตาม variant
+        const variantMap = new Map();
+        
         rows.forEach(row => {
             if (row.Variant_ID) {
-                product.variants.push({
-                    variantId: row.Variant_ID, size: row.Size, color: row.Color,
-                    stock: row.Stock, price: row.Price, cost: row.Cost,
-                    variantImageUrl: row.VariantImageURL || null // <--- ส่วนสำคัญที่เพิ่มเข้ามา
-                });
+                if (!variantMap.has(row.Variant_ID)) {
+                    variantMap.set(row.Variant_ID, {
+                        variantId: row.Variant_ID, 
+                        size: row.Size, 
+                        color: row.Color,
+                        stock: row.Stock, 
+                        price: row.Price, 
+                        cost: row.Cost,
+                        images: []
+                    });
+                }
+                
+                // เพิ่มรูปภาพถ้ามี
+                if (row.PictureURL) {
+                    variantMap.get(row.Variant_ID).images.push({
+                        PictureURL: row.PictureURL,
+                        ImageType: row.ImageType || 'front',
+                        Color: row.ImageColor || row.Color
+                    });
+                }
             }
         });
+
+        // แปลง Map เป็น Array
+        product.variants = Array.from(variantMap.values());
+        
         res.json(product);
     } catch (error) {
         console.error('Error fetching single product:', error);
@@ -201,11 +223,14 @@ exports.getOneProduct = async (req, res) => {
                 );
                 const variantId = variantResult.insertId;
 
-                if (variant.imageUrl) {
-                    await connection.query(
-                        'INSERT INTO picture (Product_ID, PictureURL, Variant_ID) VALUES (?, ?, ?)',
-                        [productId, variant.imageUrl, variantId]
-                    );
+                // อัปโหลดรูปภาพใหม่ (รองรับ front และ back)
+                if (variant.images && Array.isArray(variant.images)) {
+                    for (const image of variant.images) {
+                        await connection.query(
+                            'INSERT INTO picture (Product_ID, PictureURL, Variant_ID, ImageType, Color) VALUES (?, ?, ?, ?, ?)',
+                            [productId, image.url, variantId, image.type, variant.color]
+                        );
+                    }
                 }
             }
 
@@ -238,10 +263,39 @@ exports.getOneProduct = async (req, res) => {
             connection = await db.getConnection();
             await connection.beginTransaction();
 
-            // Delete the specific variant
+            // ตรวจสอบว่ามีข้อมูลใน orderdetails หรือไม่
+            const [orderDetailsCheck] = await connection.query(
+                'SELECT COUNT(*) AS count FROM orderdetails WHERE Variant_ID = ?',
+                [variantId]
+            );
+
+            if (orderDetailsCheck[0].count > 0) {
+                await connection.rollback();
+                return res.status(400).json({ 
+                    message: 'ไม่สามารถลบสินค้านี้ได้ เนื่องจากมีข้อมูลการสั่งซื้อที่เกี่ยวข้อง กรุณาติดต่อผู้ดูแลระบบ' 
+                });
+            }
+
+            // ตรวจสอบว่ามีข้อมูลใน cartitem หรือไม่
+            const [cartItemCheck] = await connection.query(
+                'SELECT COUNT(*) AS count FROM cartitem WHERE Variant_ID = ?',
+                [variantId]
+            );
+
+            if (cartItemCheck[0].count > 0) {
+                await connection.rollback();
+                return res.status(400).json({ 
+                    message: 'ไม่สามารถลบสินค้านี้ได้ เนื่องจากมีข้อมูลในตะกร้าสินค้า กรุณาติดต่อผู้ดูแลระบบ' 
+                });
+            }
+
+            // ลบรูปภาพก่อน
+            await connection.query('DELETE FROM picture WHERE Variant_ID = ?', [variantId]);
+
+            // ลบ variant
             const [result] = await connection.query(
                 'DELETE FROM product_variants WHERE Variant_ID = ? AND Product_ID = ?',
-                [variantId, productId] // Ensure both match
+                [variantId, productId]
             );
 
             if (result.affectedRows === 0) {
@@ -249,11 +303,13 @@ exports.getOneProduct = async (req, res) => {
                 return res.status(404).json({ message: 'Product variant not found or already deleted.' });
             }
 
+            // ตรวจสอบว่ายังมี variant อื่นๆ หรือไม่
             const [remainingVariants] = await connection.query(
                 'SELECT COUNT(*) AS count FROM product_variants WHERE Product_ID = ?',
                 [productId]
             );
 
+            // ถ้าไม่มี variant เหลือแล้ว ให้ลบ product และรูปภาพทั้งหมด
             if (remainingVariants[0].count === 0) {
                 await connection.query('DELETE FROM picture WHERE Product_ID = ?', [productId]);
                 await connection.query('DELETE FROM product WHERE Product_ID = ?', [productId]);

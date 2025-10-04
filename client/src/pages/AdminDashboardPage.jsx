@@ -33,6 +33,8 @@ import {
   DialogTitle,
   Pagination,
   Stack,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
@@ -42,6 +44,8 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Receipt as ReceiptIcon,
+  Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -65,6 +69,9 @@ export default function AdminDashboardPage() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   const apiBase = 'http://localhost:5000/api';
   const itemsPerPage = 20;
@@ -185,9 +192,15 @@ export default function AdminDashboardPage() {
     if (!itemToDelete) return;
     try {
       await axios.delete(`${apiBase}/products/${itemToDelete.id}/variants/${itemToDelete.variantId}`);
+      setSnackbarMessage('ลบสินค้าสำเร็จ!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
       fetchProducts();
     } catch (err) {
-      alert(`ไม่สามารถลบสินค้าได้: ${err.response?.data?.message || err.message}`);
+      const errorMessage = err.response?.data?.message || err.message;
+      setSnackbarMessage(errorMessage);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     } finally {
       setItemToDelete(null);
     }
@@ -195,6 +208,11 @@ export default function AdminDashboardPage() {
   const handleDeleteCancel = () => {
     setOpenDeleteDialog(false);
     setItemToDelete(null);
+  };
+
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbarOpen(false);
   };
 
   // --- Pagination Handlers ---
@@ -234,7 +252,7 @@ export default function AdminDashboardPage() {
         <ListItem disablePadding component={Link} to="/admin/orders">
           <ListItemButton>
             <ListItemIcon>
-              <InventoryIcon sx={{ color: 'white' }} />
+              <ReceiptIcon sx={{ color: 'white' }} />
             </ListItemIcon>
             <ListItemText primary="จัดการข้อมูลการสั่งซื้อ" sx={{ color: 'white' }} />
           </ListItemButton>
@@ -243,7 +261,7 @@ export default function AdminDashboardPage() {
         <ListItem disablePadding component={Link} to="/reports">
           <ListItemButton>
             <ListItemIcon>
-              <InventoryIcon sx={{ color: 'white' }} />
+              <AssessmentIcon sx={{ color: 'white' }} />
             </ListItemIcon>
             <ListItemText primary="รายงานสินค้า" sx={{ color: 'white' }} />
           </ListItemButton>
@@ -422,6 +440,18 @@ export default function AdminDashboardPage() {
           <Button onClick={handleDeleteConfirm} color="error" autoFocus>ลบ</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

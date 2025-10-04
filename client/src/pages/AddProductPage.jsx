@@ -47,8 +47,10 @@
                 sizes: [],
                 price: '',
                 cost: '',
-                imageFile: null,
-                imageUrl: '',
+                frontImageFile: null,
+                frontImageUrl: '',
+                backImageFile: null,
+                backImageUrl: '',
             },
         ]);
 
@@ -111,8 +113,10 @@
                     sizes: [], // sizes is now an array of objects: { name: 'S', stock: 10 }
                     price: '',
                     cost: '',
-                    imageFile: null,
-                    imageUrl: '',
+                    frontImageFile: null,
+                    frontImageUrl: '',
+                    backImageFile: null,
+                    backImageUrl: '',
                 },
             ]);
         };
@@ -151,20 +155,37 @@
             setColorVariants(newColorVariants);
         };
 
-        const handleImageChange = (index, event) => {
+        const handleFrontImageChange = (index, event) => {
             const file = event.target.files[0];
             if (file) {
                 const newColorVariants = [...colorVariants];
-                newColorVariants[index].imageFile = file;
-                newColorVariants[index].imageUrl = URL.createObjectURL(file);
+                newColorVariants[index].frontImageFile = file;
+                newColorVariants[index].frontImageUrl = URL.createObjectURL(file);
                 setColorVariants(newColorVariants);
             }
         };
 
-        const handleRemoveImage = (index) => {
+        const handleBackImageChange = (index, event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const newColorVariants = [...colorVariants];
+                newColorVariants[index].backImageFile = file;
+                newColorVariants[index].backImageUrl = URL.createObjectURL(file);
+                setColorVariants(newColorVariants);
+            }
+        };
+
+        const handleRemoveFrontImage = (index) => {
             const newColorVariants = [...colorVariants];
-            newColorVariants[index].imageFile = null;
-            newColorVariants[index].imageUrl = '';
+            newColorVariants[index].frontImageFile = null;
+            newColorVariants[index].frontImageUrl = '';
+            setColorVariants(newColorVariants);
+        };
+
+        const handleRemoveBackImage = (index) => {
+            const newColorVariants = [...colorVariants];
+            newColorVariants[index].backImageFile = null;
+            newColorVariants[index].backImageUrl = '';
             setColorVariants(newColorVariants);
         };
 
@@ -186,20 +207,41 @@ const handleSubmit = async (event) => {
         // Step 1: อัปโหลดรูปภาพทั้งหมดก่อน แล้วเก็บ URL ไว้ใน Map
         const colorImageUrlMap = {};
         for (const cv of colorVariants) {
-            // อัปโหลดเฉพาะสีที่มีไฟล์รูปภาพและยังไม่เคยอัปโหลด
-            if (cv.imageFile && !colorImageUrlMap[cv.color]) {
-                const formData = new FormData();
-                formData.append('image', cv.imageFile); // Server คาดหวัง field 'image' ไม่ใช่ 'images'
-
-                // [แก้ไข] แก้ไข URL ให้ถูกต้องเป็น /upload-images
-                const uploadRes = await axios.post(`${apiBase}/upload-images`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                });
-
-                if (uploadRes.data.success) {
-                    colorImageUrlMap[cv.color] = uploadRes.data.imageUrl;
-                } else {
-                    throw new Error(`อัปโหลดรูปสำหรับสี "${cv.color}" ไม่สำเร็จ`);
+            if (cv.color && (cv.frontImageFile || cv.backImageFile)) {
+                const imageUrls = [];
+                
+                // อัปโหลดรูปหน้า
+                if (cv.frontImageFile) {
+                    const frontFormData = new FormData();
+                    frontFormData.append('image', cv.frontImageFile);
+                    const frontUploadRes = await axios.post(`${apiBase}/upload-images`, frontFormData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                    });
+                    if (frontUploadRes.data.success) {
+                        imageUrls.push({
+                            type: 'front',
+                            url: frontUploadRes.data.imageUrl
+                        });
+                    }
+                }
+                
+                // อัปโหลดรูปหลัง
+                if (cv.backImageFile) {
+                    const backFormData = new FormData();
+                    backFormData.append('image', cv.backImageFile);
+                    const backUploadRes = await axios.post(`${apiBase}/upload-images`, backFormData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                    });
+                    if (backUploadRes.data.success) {
+                        imageUrls.push({
+                            type: 'back',
+                            url: backUploadRes.data.imageUrl
+                        });
+                    }
+                }
+                
+                if (imageUrls.length > 0) {
+                    colorImageUrlMap[cv.color] = imageUrls;
                 }
             }
         }
@@ -218,8 +260,8 @@ const handleSubmit = async (event) => {
                             stock: parseInt(sizeObj.stock, 10),
                             price: parseFloat(cv.price),
                             cost: parseFloat(cv.cost),
-                            // เพิ่ม imageUrl เข้าไปในแต่ละ variant
-                            imageUrl: colorImageUrlMap[cv.color] || null 
+                            // เพิ่ม images array เข้าไปในแต่ละ variant
+                            images: colorImageUrlMap[cv.color] || [] 
                         });
                     }
                 });
@@ -445,20 +487,44 @@ const handleSubmit = async (event) => {
 
                                                     <Grid item xs={12}>
                                                         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'medium' }}>รูปภาพสำหรับสีนี้:</Typography>
-                                                        {colorVariant.imageUrl ? (
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
-                                                                <img src={colorVariant.imageUrl} alt={`Preview ${index}`} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: '4px' }} />
-                                                                <Typography sx={{ flexGrow: 1 }}>{colorVariant.imageFile?.name || 'รูปภาพ'}</Typography>
-                                                                <IconButton onClick={() => handleRemoveImage(index)} color="error">
-                                                                    <DeleteIcon />
-                                                                </IconButton>
-                                                            </Box>
-                                                        ) : (
-                                                            <Button variant="outlined" component="label" fullWidth startIcon={<CloudUploadIcon />}>
-                                                                อัปโหลดรูปภาพสำหรับสีนี้
-                                                                <input type="file" hidden accept="image/*" onChange={(e) => handleImageChange(index, e)} />
-                                                            </Button>
-                                                        )}
+                                                        
+                                                        {/* รูปหน้า */}
+                                                        <Box sx={{ mb: 2 }}>
+                                                            <Typography variant="body2" sx={{ mb: 1 }}>รูปหน้า:</Typography>
+                                                            {colorVariant.frontImageUrl ? (
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
+                                                                    <img src={colorVariant.frontImageUrl} alt={`Front ${index}`} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: '4px' }} />
+                                                                    <Typography sx={{ flexGrow: 1 }}>{colorVariant.frontImageFile?.name || 'รูปหน้า'}</Typography>
+                                                                    <IconButton onClick={() => handleRemoveFrontImage(index)} color="error">
+                                                                        <DeleteIcon />
+                                                                    </IconButton>
+                                                                </Box>
+                                                            ) : (
+                                                                <Button variant="outlined" component="label" fullWidth startIcon={<CloudUploadIcon />}>
+                                                                    อัปโหลดรูปหน้า
+                                                                    <input type="file" hidden accept="image/*" onChange={(e) => handleFrontImageChange(index, e)} />
+                                                                </Button>
+                                                            )}
+                                                        </Box>
+
+                                                        {/* รูปหลัง */}
+                                                        <Box>
+                                                            <Typography variant="body2" sx={{ mb: 1 }}>รูปหลัง:</Typography>
+                                                            {colorVariant.backImageUrl ? (
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
+                                                                    <img src={colorVariant.backImageUrl} alt={`Back ${index}`} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: '4px' }} />
+                                                                    <Typography sx={{ flexGrow: 1 }}>{colorVariant.backImageFile?.name || 'รูปหลัง'}</Typography>
+                                                                    <IconButton onClick={() => handleRemoveBackImage(index)} color="error">
+                                                                        <DeleteIcon />
+                                                                    </IconButton>
+                                                                </Box>
+                                                            ) : (
+                                                                <Button variant="outlined" component="label" fullWidth startIcon={<CloudUploadIcon />}>
+                                                                    อัปโหลดรูปหลัง
+                                                                    <input type="file" hidden accept="image/*" onChange={(e) => handleBackImageChange(index, e)} />
+                                                                </Button>
+                                                            )}
+                                                        </Box>
                                                     </Grid>
                                                 </Grid>
                                             </CardContent>

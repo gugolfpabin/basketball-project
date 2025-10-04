@@ -16,6 +16,8 @@ export default function ProductDetailPage() {
     const [selectedColor, setSelectedColor] = useState('');
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedVariant, setSelectedVariant] = useState(null);
+    const [currentView, setCurrentView] = useState('front'); // 'front' หรือ 'back'
+    const [colorImages, setColorImages] = useState({}); // เก็บรูปของแต่ละสี
     const [user, setUser] = useState(null);
     const [anchorElUser, setAnchorElUser] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -35,10 +37,24 @@ export default function ProductDetailPage() {
                 const response = await axios.get(`${apiBase}/products/${id}`);
                 setProduct(response.data);
                 
+                // จัดกลุ่มรูปภาพตามสี
                 if (response.data.variants && response.data.variants.length > 0) {
-                    const firstVariantWithImage = response.data.variants.find(v => v.variantImageUrl);
-                    if (firstVariantWithImage) {
-                        setSelectedImage(firstVariantWithImage.variantImageUrl);
+                    const imageGroups = {};
+                    response.data.variants.forEach(variant => {
+                        if (variant.images) {
+                            imageGroups[variant.color] = {
+                                front: variant.images.find(img => img.ImageType === 'front')?.PictureURL || '',
+                                back: variant.images.find(img => img.ImageType === 'back')?.PictureURL || ''
+                            };
+                        }
+                    });
+                    setColorImages(imageGroups);
+                    
+                    // เลือกสีแรกที่มีรูป
+                    const firstColor = Object.keys(imageGroups)[0];
+                    if (firstColor) {
+                        setSelectedColor(firstColor);
+                        setSelectedImage(imageGroups[firstColor].front || imageGroups[firstColor].back || '');
                     }
                 }
             } catch (err) {
@@ -68,11 +84,13 @@ export default function ProductDetailPage() {
         return [...new Set(product.variants.map(v => v.color))];
     }, [product]); // คำสั่งนี้จะทำงานใหม่ก็ต่อเมื่อ product เปลี่ยนแปลง
 
-    const uniqueImages = useMemo(() => {
-        if (!product || !product.variants) return [];
-        const imageUrls = product.variants.map(v => v.variantImageUrl).filter(url => url);
-        return [...new Set(imageUrls)];
-    }, [product]);
+    const currentColorImages = useMemo(() => {
+        if (!selectedColor || !colorImages[selectedColor]) return [];
+        const images = [];
+        if (colorImages[selectedColor].front) images.push(colorImages[selectedColor].front);
+        if (colorImages[selectedColor].back) images.push(colorImages[selectedColor].back);
+        return images;
+    }, [selectedColor, colorImages]);
 
     const availableSizes = useMemo(() => {
         if (!product || !product.variants || !selectedColor) return [];
@@ -86,9 +104,16 @@ export default function ProductDetailPage() {
     const handleColorSelect = (color) => {
         setSelectedColor(color);
         setSelectedSize(''); // Reset ขนาดที่เลือกเมื่อเปลี่ยนสี
-        const variantForColor = product.variants.find(v => v.color === color && v.variantImageUrl);
-        if (variantForColor) {
-            setSelectedImage(variantForColor.variantImageUrl);
+        setCurrentView('front'); // Reset เป็นรูปหน้า
+        if (colorImages[color]) {
+            setSelectedImage(colorImages[color].front || colorImages[color].back || '');
+        }
+    };
+
+    const handleViewToggle = (view) => {
+        setCurrentView(view);
+        if (selectedColor && colorImages[selectedColor]) {
+            setSelectedImage(colorImages[selectedColor][view] || '');
         }
     };
     
@@ -221,7 +246,7 @@ export default function ProductDetailPage() {
                         <div className="flex flex-col-reverse sm:flex-row gap-4">
                             {/* Thumbnails */}
                             <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto max-h-[400px]">
-                                {uniqueImages.map((imgUrl, index) => (
+                                {currentColorImages.map((imgUrl, index) => (
                                     <img key={index} src={imgUrl} alt={`Thumbnail ${index + 1}`}
                                         className={`w-20 h-20 object-contain rounded-md cursor-pointer border ${
                                             imgUrl === selectedImage ? 'border-blue-600' : 'border-gray-300'
@@ -231,8 +256,10 @@ export default function ProductDetailPage() {
                                 ))}
                             </div>
                             {/* Main Image */}
-                            <div className="flex-1 flex items-center justify-center">
+                            <div className="flex-1 flex flex-col items-center justify-center">
                                 <img src={selectedImage || 'https://placehold.co/400x500/E0E0E0/333333?text=Product+Image'} alt={product.name} className="max-h-[500px] object-contain rounded-lg shadow-md" />
+                                
+                            
                             </div>
                         </div>
                     </div>

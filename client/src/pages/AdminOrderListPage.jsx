@@ -57,9 +57,9 @@ export default function AdminOrderListPage() {
 
   const statusOptions = [
     { id: 'all', name: 'ทั้งหมด' },
-    { id: 'verifying', name: 'รอการตรวจสอบ' },
-    { id: 'paid', name: 'ชำระเงินแล้ว' },
-    { id: 'cancelled', name: 'ยกเลิก' },
+    { id: 'verifying', name: 'ระหว่างตรวจสอบ' },
+    { id: 'completed', name: 'ชำระเงินเสร็จสิ้น' },
+    { id: 'cancelled', name: 'ยกเลิกแล้ว' },
   ];
 
   // --- User Authentication ---
@@ -85,13 +85,20 @@ export default function AdminOrderListPage() {
         const fetchOrders = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get(`${apiBase}/admin/orders`, {
+                console.log('Token:', token ? 'Found' : 'Not found');
+                if (!token) {
+                    setError('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+                    return;
+                }
+                const response = await axios.get(`${apiBase}/orders`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                
                 setOrders(response.data);
             } catch (err) {
-                setError('ไม่สามารถดึงข้อมูลออเดอร์ได้');
-                console.error(err);
+                console.error('Error fetching orders:', err);
+                console.error('Error response:', err.response?.data);
+                setError(`ไม่สามารถดึงข้อมูลออเดอร์ได้: ${err.response?.data?.message || err.message}`);
             } finally {
                 setLoading(false);
             }
@@ -146,9 +153,9 @@ export default function AdminOrderListPage() {
   // --- Status Chip Color ---
   const getStatusColor = (status) => {
     switch (status) {
-      case 'verifying': return 'warning'; // รอการตรวจสอบ
-      case 'paid': return 'success'; // ชำระเงินแล้ว
-      case 'cancelled': return 'error'; // ยกเลิก
+      case 'verifying': return 'warning';
+      case 'completed': return 'success';
+      case 'cancelled': return 'error';
       default: return 'default';
     }
   };
@@ -322,7 +329,7 @@ export default function AdminOrderListPage() {
                         to={`/admin/order/${order.Order_ID}`}
                         sx={{ textTransform: 'none', borderRadius: '20px', px: 2 }}
                       >
-                        ดูรายละเอียด
+                        ดูรายละเอียดและจัดการ
                       </Button>
                     </TableCell>
                   </TableRow>

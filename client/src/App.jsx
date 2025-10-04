@@ -15,6 +15,7 @@ import EditProductPage from './pages/EditProductPage.jsx';
 import CartPage from './pages/CartPage';
 import ManualPaymentPage from './pages/ManualPaymentPage';
 import AdminOrderListPage from './pages/AdminOrderListPage';
+import AdminOrderDetailPage from './pages/AdminOrderDetailPage.jsx';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
           <Route path="/admin/products/add" element={<AddProductPage />} />
           <Route path="/admin/products/edit/:id/variant/:variantId" element={<EditProductPage />} />
           <Route path="/admin/orders" element={<AdminOrderListPage />} />
+          <Route path="/admin/order/:orderId" element={<AdminOrderDetailPage />} />
         </Route>
        
         
