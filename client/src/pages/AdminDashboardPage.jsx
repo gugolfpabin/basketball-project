@@ -91,13 +91,17 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const handler = setTimeout(() => {
         setDebouncedSearchTerm(searchTerm);
-    }, 500); 
+    }, 500);
 
-  
     return () => {
         clearTimeout(handler);
     };
-}, [searchTerm]);
+}, [searchTerm]); 
+
+// --- Fetch Products ---
+useEffect(() => {
+    fetchProducts();
+}, [selectedCategoryFilter, debouncedSearchTerm]);
 
   // --- Fetch Products ---
   const fetchProducts = async () => {
@@ -135,8 +139,6 @@ export default function AdminDashboardPage() {
 
   // --- User Authentication ---
   useEffect(() => {
-
-    
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -164,7 +166,7 @@ export default function AdminDashboardPage() {
   const handleCategoryDropdownClose = () => setAnchorElCategoryDropdown(null);
   const handleCategoryFilterSelect = (categoryId) => {
     setSelectedCategoryFilter(categoryId);
-    setCurrentPage(1); // Reset to first page when filter changes
+    setCurrentPage(1); 
     handleCategoryDropdownClose();
   };
 
@@ -172,16 +174,14 @@ export default function AdminDashboardPage() {
   const handleMenuClickUser = (event) => setAnchorElUser(event.currentTarget);
   const handleMenuCloseUser = () => setAnchorElUser(null);
   const handleLogout = () => {
-    // แสดงหน้าต่าง Pop-up พร้อมข้อความและปุ่ม "OK" กับ "Cancel"
     if (window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
-        // ถ้าผู้ใช้กด "OK" (ตกลง) โค้ดในนี้จะทำงาน
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
-        setAnchorElUser(false); // ปิดเมนู Dropdown
+        setAnchorElUser(false); 
         navigate('/login');
     }
-    // ถ้าผู้ใช้กด "Cancel" (ยกเลิก) จะไม่มีอะไรเกิดขึ้น
+
 };
 
   // --- Edit & Delete Handlers ---

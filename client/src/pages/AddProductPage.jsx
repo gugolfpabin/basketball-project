@@ -357,14 +357,17 @@ const handleSubmit = async (event) => {
                         <form onSubmit={handleSubmit}>
                             <Grid container spacing={3}>
                                 <Grid item xs={12}>
-                                    <TextField
+                                    <TextField 
                                         select
                                         label="หมวดหมู่สินค้า"
                                         value={categoryId}
                                         onChange={(e) => setCategoryId(e.target.value)}
-                                        fullWidth
+                                        sx={{ minWidth: 175 }}
                                         required
+                                        
                                     >
+                                        <MenuItem value="" disabled>-- เลือกหมวดหมู่ --</MenuItem>
+                                        
                                         {categories.map(option => (
                                             <MenuItem key={option.id} value={option.id}>{option.name}</MenuItem>
                                         ))}
@@ -384,7 +387,7 @@ const handleSubmit = async (event) => {
                                         label="คำอธิบายสินค้า"
                                         value={productDescription}
                                         onChange={(e) => setProductDescription(e.target.value)}
-                                        fullWidth
+                                        sx={{ minWidth: 339 }}
                                         multiline
                                         rows={4}
                                     />
@@ -392,7 +395,7 @@ const handleSubmit = async (event) => {
 
                                 <Grid item xs={12}>
                                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                                        ข้อมูล Variants ตามสี
+                                        ข้อมูลตัวเลือก
                                     </Typography>
                                     {colorVariants.map((colorVariant, index) => (
                                         <Card key={index} variant="outlined" sx={{ mb: 3 }}>

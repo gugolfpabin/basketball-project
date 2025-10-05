@@ -22,21 +22,32 @@ exports.getAllProducts = async (req, res) => {
 
     try {
         connection = await db.getConnection();
+        const { categoryId, searchTerm } = req.query;
         let sql;
         let params = [];
         let whereClause = [];
 
         if (view === 'admin') {
-            // --- ส่วนของ Admin Dashboard (ทำงานได้ดีอยู่แล้ว) ---
+            // --- ส่วนของ Admin Dashboard ---
             sql = `
                 SELECT
                     pv.Variant_ID, pv.Product_ID, p.ProductName, p.ProductDescription,
                     p.Category_ID, c.CategoryName, pv.Size, pv.Color, pv.Stock,
-                    pv.Price, pv.Cost, pic.PictureURL AS imageUrl
+                    pv.Price, pv.Cost,
+                    (
+                        SELECT pic.PictureURL
+                        FROM picture pic
+                        WHERE pic.Variant_ID = pv.Variant_ID
+                        ORDER BY 
+                            CASE 
+                                WHEN pic.ImageType = 'front' THEN 1
+                                ELSE 2
+                            END
+                        LIMIT 1
+                    ) AS imageUrl
                 FROM product_variants pv
                 JOIN product p ON pv.Product_ID = p.Product_ID
                 LEFT JOIN category c ON p.Category_ID = c.Category_ID
-                LEFT JOIN picture pic ON pv.Variant_ID = pic.Variant_ID
             `;
             if (categoryIdFilter && categoryIdFilter !== '0' && categoryIdFilter !== 'all') {
                 whereClause.push('p.Category_ID = ?');
@@ -332,7 +343,7 @@ exports.getOneProduct = async (req, res) => {
         }
     };
 
-    // --- updateProduct: Update product details and its specific variant ---
+    // --- updateProduct ---
 exports.updateProduct = async (req, res) => {
     const { productId } = req.params; 
     const { productName, productDescription, categoryId, variants } = req.body;
@@ -363,19 +374,20 @@ exports.updateProduct = async (req, res) => {
                 );
 
                 // 2.2 [สำคัญ] ตรรกะ UPSERT สำหรับรูปภาพ (picture table)
-                if (variant.variantImageUrl) {
-                    // พยายาม UPDATE รูปภาพก่อน
-                    const [updateResult] = await connection.query(
-                        `UPDATE picture SET PictureURL = ? WHERE Variant_ID = ?`,
-                        [variant.variantImageUrl, variant.variantId]
-                    );
+                await connection.query(
+                    'DELETE FROM picture WHERE Variant_ID = ?', 
+                    [variant.variantId]
+                );
 
                     // ถ้า UPDATE ไม่สำเร็จ (ไม่เจอแถวข้อมูลเดิม) ให้ INSERT เป็นข้อมูลใหม่แทน
-                    if (updateResult.affectedRows === 0) {
-                        await connection.query(
-                            `INSERT INTO picture (Product_ID, Variant_ID, PictureURL) VALUES (?, ?, ?)`,
-                            [productId, variant.variantId, variant.variantImageUrl]
-                        );
+                    if (variant.images && Array.isArray(variant.images)) {
+                    for (const image of variant.images) {
+                        if (image.url && image.type) { 
+                            await connection.query(
+                                'INSERT INTO picture (Product_ID, Variant_ID, PictureURL, ImageType, Color) VALUES (?, ?, ?, ?, ?)',
+                                [productId, variant.variantId, image.url, image.type, variant.color]
+                            );
+                        }
                     }
                 }
             }

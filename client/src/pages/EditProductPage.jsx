@@ -33,9 +33,10 @@ export default function EditProductPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-
+  const [frontImageFile, setFrontImageFile] = useState(null);
+  const [backImageFile, setBackImageFile] = useState(null);
+  const [frontImagePreview, setFrontImagePreview] = useState(null);
+  const [backImagePreview, setBackImagePreview] = useState(null);
   const apiBase = "http://localhost:5000/api";
 
   useEffect(() => {
@@ -61,11 +62,24 @@ export default function EditProductPage() {
         );
 
         if (foundVariant) {
-          setProduct(productData);
-          setVariant(foundVariant);
-          
-          setImagePreview(foundVariant.variantImageUrl); 
+    // ...โค้ดเดิม...
 
+    const frontImg = foundVariant.images.find(img => img.ImageType === 'front');
+    const backImg = foundVariant.images.find(img => img.ImageType === 'back');
+
+    // --- ส่วนที่แก้ไข ---
+    // 1. ตั้งค่า Preview สำหรับแสดงผล (เหมือนเดิม)
+    setFrontImagePreview(frontImg?.PictureURL || null);
+    setBackImagePreview(backImg?.PictureURL || null);
+
+    // 2. [สำคัญ] เก็บ URL รูปเก่าไว้ใน State `variant` ด้วย
+    // โดยเพิ่ม property ใหม่เข้าไป
+    setVariant({
+        ...foundVariant,
+        frontImageUrl: frontImg?.PictureURL || '',
+        backImageUrl: backImg?.PictureURL || ''
+    });
+setProduct(productData);
         } else {
           setError("ไม่พบ Variant ของสินค้าที่ระบุ");
         }
@@ -87,17 +101,21 @@ export default function EditProductPage() {
     setVariant({ ...variant, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChangeFront = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    } else {
-      setImageFile(null);
-      setImagePreview(variant.variantImageUrl);
+        setFrontImageFile(file);
+        setFrontImagePreview(URL.createObjectURL(file));
     }
-  };
+};
 
+const handleFileChangeBack = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        setBackImageFile(file);
+        setBackImagePreview(URL.createObjectURL(file));
+    }
+};
 
 const handleSubmit = async (e) => {
     e.preventDefault();
@@ -105,84 +123,75 @@ const handleSubmit = async (e) => {
     setError(null);
     setSuccess(false);
 
-    if (!product || !variant) {
-      setError("ข้อมูลสินค้าไม่สมบูรณ์");
-      setSubmitting(false);
-      return;
-    }
-
     try {
-      let finalImageUrl = variant.variantImageUrl;
+        // ฟังก์ชันช่วยอัปโหลดรูปภาพ
+        const uploadImage = async (file) => {
+            const formData = new FormData();
+            formData.append("image", file);
+            const res = await axios.post(`${apiBase}/upload-images`, formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            if (res.data.success) {
+                return res.data.imageUrl;
+            }
+            throw new Error(res.data.message || 'Image upload failed');
+        };
 
-      // 1. ถ้ามีการเลือกไฟล์รูปภาพใหม่ ให้อัปโหลดก่อน
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append("image", imageFile);
+        // 1. จัดการ URL รูปภาพ
+        let finalFrontImageUrl = variant.frontImageUrl;
+        let finalBackImageUrl = variant.backImageUrl;
 
-        try {
-          // *** ตรวจสอบให้แน่ใจว่าได้แก้ปัญหา 404 Not Found ของ Route นี้แล้ว ***
-          const uploadRes = await axios.post(`${apiBase}/upload-images`, formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-
-          if (uploadRes.data.success) {
-            finalImageUrl = uploadRes.data.imageUrl;
-          } else {
-            throw new Error(uploadRes.data.message || 'Image upload failed');
-          }
-        } catch (uploadErr) {
-          console.error("Error uploading image:", uploadErr.response ? uploadErr.response.data : uploadErr.message);
-          // แสดง Error ที่ชัดเจนขึ้น
-          const errorMessage = uploadErr.response?.data?.message || "ไม่สามารถอัปโหลดรูปภาพได้";
-          throw new Error(errorMessage);
+        if (frontImageFile) {
+            finalFrontImageUrl = await uploadImage(frontImageFile);
         }
-      }
-      
-      // 2. [แก้ไข] สร้าง Array variants ตัวใหม่ทั้งหมด
-      // โดยทำการ map ข้อมูลจาก state เดิมของ product
-      // แล้วแทนที่เฉพาะ variant ที่เรากำลังแก้ไขด้วยข้อมูลใหม่
-      const updatedVariants = product.variants.map(v => {
-        // ใช้ `==` เพราะ variantId จาก useParams เป็น string แต่อาจเป็น number ใน database
-        if (v.variantId == variantId) { 
-          // นี่คือ variant ที่เราแก้ไข ส่งข้อมูลที่อัปเดตแล้วกลับไป
-          return {
-            ...variant, // ข้อมูลใหม่จาก form (size, color, etc.)
-            stock: parseInt(variant.stock, 10),
-            price: parseFloat(variant.price),
-            cost: parseFloat(variant.cost),
-            variantImageUrl: finalImageUrl, // URL รูปภาพใหม่ (หรือเก่าถ้าไม่ได้เปลี่ยน)
-          };
+        if (backImageFile) {
+            finalBackImageUrl = await uploadImage(backImageFile);
         }
-        // นี่คือ variant อื่นๆ ที่ไม่ได้แก้ไข ส่งข้อมูลเดิมกลับไป
-        return v; 
-      });
 
-      // 3. [แก้ไข] สร้าง payload ที่มีข้อมูล variants "ครบทุกตัว"
-      const payload = {
-        productName: product.name,
-        productDescription: product.description,
-        categoryId: product.categoryId,
-        variants: updatedVariants, // <--- ใช้ Array ที่สร้างขึ้นมาใหม่
-      };
+        // 2. สร้าง array `images` สำหรับส่งไป backend
+        const imagesForPayload = [];
+        if (finalFrontImageUrl) {
+            imagesForPayload.push({ url: finalFrontImageUrl, type: 'front' });
+        }
+        if (finalBackImageUrl) {
+            imagesForPayload.push({ url: finalBackImageUrl, type: 'back' });
+        }
 
-      // 4. ส่งข้อมูลทั้งหมดไปยัง endpoint update product
-      // *** ตรวจสอบให้แน่ใจว่าตัวแปร `id` ถูกต้อง (มาจาก useParams) ***
-      await axios.put(`${apiBase}/products/${id}`, payload, {
-        headers: { "Content-Type": "application/json" },
-      });
+        // 3. สร้าง Array `updatedVariants` เหมือนเดิม แต่เปลี่ยน payload รูปภาพ
+        const updatedVariants = product.variants.map(v => {
+            if (v.variantId == variantId) {
+                return {
+                    ...variant,
+                    stock: parseInt(variant.stock, 10),
+                    price: parseFloat(variant.price),
+                    cost: parseFloat(variant.cost),
+                    // ส่งเป็น array `images` แทน field รูปเดียว
+                    images: imagesForPayload,
+                };
+            }
+            return v;
+        });
 
-      setSuccess(true);
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1500);
+        // 4. สร้าง payload สุดท้ายเพื่อส่งไป API
+        const payload = {
+            productName: product.name,
+            productDescription: product.description,
+            categoryId: product.categoryId,
+            variants: updatedVariants,
+        };
+
+        await axios.put(`${apiBase}/products/${id}`, payload);
+
+        setSuccess(true);
+        setTimeout(() => navigate("/dashboard"), 1500);
+
     } catch (err) {
-      // แสดง error ที่ได้รับจาก try-catch block ด้านบนด้วย
-      setError(err.message || "ไม่สามารถบันทึกการแก้ไขได้ โปรดตรวจสอบ Console");
-      console.error("Error updating product:", err.response ? err.response.data : err.message);
+        setError(err.message || "ไม่สามารถบันทึกการแก้ไขได้");
+        console.error("Error updating product:", err);
     } finally {
-      setSubmitting(false);
+        setSubmitting(false);
     }
-  };
+};
 
   if (loading || !product || !variant) {
     return (
@@ -309,16 +318,28 @@ const handleSubmit = async (e) => {
 
         {/* รูปภาพ */}
         <div>
-          <label className="block font-medium">รูปภาพสินค้า</label>
-          {(imagePreview) && (
-            <img
-              src={imagePreview}
-              alt="Product preview"
-              className="w-32 h-32 object-cover mb-2 rounded"
-            />
-          )}
-          <input type="file" accept="image/*" onChange={handleFileChange} />
-        </div>
+    <label className="block font-medium">รูปภาพด้านหน้า</label>
+    {frontImagePreview && (
+        <img
+            src={frontImagePreview}
+            alt="Front preview"
+            className="w-32 h-32 object-cover mb-2 rounded"
+        />
+    )}
+    <input type="file" accept="image/*" onChange={handleFileChangeFront} />
+</div>
+
+<div>
+    <label className="block font-medium">รูปภาพด้านหลัง</label>
+    {backImagePreview && (
+        <img
+            src={backImagePreview}
+            alt="Back preview"
+            className="w-32 h-32 object-cover mb-2 rounded"
+        />
+    )}
+    <input type="file" accept="image/*" onChange={handleFileChangeBack} />
+</div>
 
         {/* ปุ่มบันทึก */}
         <div className="flex justify-end gap-4">
