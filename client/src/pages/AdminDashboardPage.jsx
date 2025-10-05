@@ -258,7 +258,7 @@ export default function AdminDashboardPage() {
           </ListItemButton>
         </ListItem>
 
-        <ListItem disablePadding component={Link} to="/reports">
+        <ListItem disablePadding component={Link} to="/admin/reports">
           <ListItemButton>
             <ListItemIcon>
               <AssessmentIcon sx={{ color: 'white' }} />

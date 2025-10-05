@@ -23,10 +23,12 @@ router.post('/create-manual', verifyToken, orderController.createManualOrder);
 router.post('/upload-slip/:orderId', verifyToken, uploadSlip.single('slipImage'), orderController.uploadSlip);
 router.post('/cancel/:orderId', verifyToken, orderController.cancelOrder);
 router.get('/my-history', verifyToken, orderController.getOrderHistory);
-
+router.post('/delete-pending/:orderId', verifyToken, orderController.deletePendingOrder);
 
 // Admin routes
 router.get('/', verifyToken, adminOrderController.getAllOrders);
 router.get('/:orderId', verifyToken, adminOrderController.getOrderById);
 router.put('/:orderId/status', verifyToken, adminOrderController.updateOrderStatus);
+
+
 module.exports = router;

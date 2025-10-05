@@ -4,70 +4,64 @@ const generatePayload = require('promptpay-qr');
 const qrcode = require('qrcode');
 
 
+
+
+
 exports.createManualOrder = async (req, res) => {
     const memberId = req.user.id;
-    const { items, subtotal } = req.body; // รับรายการสินค้าและยอดรวมจาก Frontend
+    const { items, subtotal } = req.body;
 
-    // ตรวจสอบข้อมูลเบื้องต้น
     if (!items || items.length === 0) {
         return res.status(400).json({ message: "ตะกร้าสินค้าว่างเปล่า" });
     }
 
     let connection;
-try {
+    try {
         connection = await db.getConnection();
         await connection.beginTransaction();
-        
-        // --- ส่วนกันสต็อก  ---
-        for (const item of items) {
-            const [rows] = await connection.query(
-                'SELECT Stock FROM product_variants WHERE Variant_ID = ? FOR UPDATE', 
-                [item.variantId]
-            );
-            if (rows.length === 0 || rows[0].Stock < item.quantity) {
-                await connection.rollback();
-                return res.status(400).json({ message: `สินค้า ${item.productName || ''} มีในสต็อกไม่เพียงพอ` });
-            }
-            // ลดสต็อกทันที
-            await connection.query(
-                'UPDATE product_variants SET Stock = Stock - ? WHERE Variant_ID = ?',
-                [item.quantity, item.variantId]
-            );
-        }
 
-        // 1. สร้างออเดอร์หลักในตาราง `orders`
         const [newOrder] = await connection.query(
             'INSERT INTO `orders` (Member_ID, TotalPrice, Status, CreatedAt) VALUES (?, ?, ?, NOW())',
             [memberId, subtotal, 'pending'] 
         );
- 
-
         const orderId = newOrder.insertId;
 
-        // 2. (Optional แต่แนะนำ) บันทึกรายละเอียดสินค้าลงในตาราง `orderdetails`
         for (const item of items) {
+            // 1. ดึงข้อมูล Stock และ "Cost" ของสินค้า
+            const [variantRows] = await connection.query(
+                'SELECT Stock, Cost FROM product_variants WHERE Variant_ID = ? FOR UPDATE', 
+                [item.variantId]
+            );
+            
+            if (variantRows.length === 0 || variantRows[0].Stock < item.quantity) {
+                await connection.rollback();
+                return res.status(400).json({ message: `สินค้า ${item.productName || ''} มีในสต็อกไม่เพียงพอ` });
+            }
+
             await connection.query(
-                'INSERT INTO `orderdetails` (Order_ID, Variant_ID, Quantity, UnitPrice) VALUES (?, ?, ?, ?)',
-                [orderId, item.variantId, item.quantity, item.unitPrice]
+                'UPDATE product_variants SET Stock = Stock - ? WHERE Variant_ID = ?',
+                [item.quantity, item.variantId]
+            );
+
+            // 2. บันทึกรายละเอียดสินค้าลงใน `orderdetails` พร้อมกับ "Cost" ที่ดึงมาได้
+            await connection.query(
+                'INSERT INTO `orderdetails` (Order_ID, Variant_ID, Quantity, UnitPrice, UnitCost) VALUES (?, ?, ?, ?, ?)',
+                [orderId, item.variantId, item.quantity, item.unitPrice, variantRows[0].Cost] 
             );
         }
         
-        // 3. สร้าง QR Code
-        const promptpayId = '097-294-5671'; // <<-- ใส่เบอร์ PromptPay ของร้านคุณตรงนี้!
+        const promptpayId = '097-294-5671';
         const amount = parseFloat(subtotal);
         const payload = generatePayload(promptpayId, { amount });
-
-        // แปลง payload เป็นรูปภาพ QR Code (ในรูปแบบ Data URL)
         const qrCodeImage = await qrcode.toDataURL(payload);
 
         await connection.commit();
 
-        // 4. ส่งข้อมูลกลับไปให้ Frontend
         res.status(200).json({
             orderId: orderId,
             qrCodeImage: qrCodeImage,
             totalAmount: amount,
-            expiresAt: Date.now() + 5 * 60 * 1000 // ส่งเวลาหมดอายุ (5 นาทีจากนี้)
+            expiresAt: Date.now() + 5 * 60 * 1000
         });
 
     } catch (error) {
@@ -78,6 +72,10 @@ try {
         if (connection) connection.release();
     }
 };
+
+
+
+
 
 exports.uploadSlip = async (req, res) => {
     const { orderId } = req.params;
@@ -169,71 +167,6 @@ exports.cancelOrder = async (req, res) => {
 };
 
 
-// exports.getOrderHistory = async (req, res) => {
-//     try {
-//         const memberId = req.user.id;
-//         const { status } = req.query;
-
-//         let baseQuery = `
-//             SELECT
-//                 o.Order_ID, o.CreatedAt, o.TotalPrice, o.Status, o.AdminNotes,
-//                 od.Quantity, od.UnitPrice,
-//                 p.ProductName,
-//                 pv.Color, pv.Size,
-//                 pi.PictureURL
-//             FROM \`orders\` o
-//             JOIN \`orderdetails\` od ON o.Order_ID = od.Order_ID
-//             JOIN \`product_variants\` pv ON od.Variant_ID = pv.Variant_ID
-//             JOIN \`product\` p ON pv.Product_ID = p.Product_ID
-//             LEFT JOIN (
-//                 SELECT Product_ID, Color, PictureURL, ROW_NUMBER() OVER(PARTITION BY Product_ID, Color ORDER BY Picture_ID) as rn
-//                 FROM \`picture\` WHERE ImageType = 'front'
-//             ) pi ON p.Product_ID = pi.Product_ID AND pv.Color = pi.Color AND pi.rn = 1
-//             WHERE o.Member_ID = ?
-//         `;
-//         const params = [memberId];
-
-//         if (status && status !== 'all') {
-//             baseQuery += ' AND o.Status = ?';
-//             params.push(status);
-//         }
-
-//         baseQuery += ' ORDER BY o.CreatedAt DESC, o.Order_ID';
-
-//         const [rows] = await db.query(baseQuery, params);
-
-//         // จัดกลุ่มข้อมูลสินค้าให้อยู่ในแต่ละออเดอร์
-//         const ordersMap = {};
-//         for (const row of rows) {
-//             if (!ordersMap[row.Order_ID]) {
-//                 ordersMap[row.Order_ID] = {
-//                     Order_ID: row.Order_ID,
-//                     CreatedAt: row.CreatedAt,
-//                     TotalPrice: row.TotalPrice,
-//                     Status: row.Status,
-//                     AdminNotes: row.AdminNotes,
-//                     details: []
-//                 };
-//             }
-//             ordersMap[row.Order_ID].details.push({
-//                 ProductName: row.ProductName,
-//                 PictureURL: row.PictureURL,
-//                 Color: row.Color,
-//                 Size: row.Size,
-//                 Quantity: row.Quantity,
-//                 UnitPrice: row.UnitPrice
-//             });
-//         }
-
-//         const finalOrders = Object.values(ordersMap);
-//         res.status(200).json(finalOrders);
-
-//     } catch (error) {
-//         console.error("Get order history error:", error);
-//         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
-//     }
-// };
-
 exports.getOrderHistory = async (req, res) => {
     try {
         const memberId = req.user.id;
@@ -305,5 +238,55 @@ exports.getOrderHistory = async (req, res) => {
     } catch (error) {
         console.error("Get order history error:", error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
+    }
+};
+exports.deletePendingOrder = async (req, res) => {
+    const { orderId } = req.params;
+    const memberId = req.user.id;
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // 1. ตรวจสอบออเดอร์ให้แน่ใจว่าเป็นของ User คนนี้ และมีสถานะเป็น 'pending' เท่านั้น
+        const [orders] = await connection.query(
+            "SELECT Status FROM `orders` WHERE Order_ID = ? AND Member_ID = ?",
+            [orderId, memberId]
+        );
+
+        if (orders.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'ไม่พบออเดอร์' });
+        }
+        if (orders[0].Status !== 'pending') {
+            await connection.rollback();
+            return res.status(400).json({ message: 'ไม่สามารถลบออเดอร์ที่ไม่ใช่สถานะ pending ได้' });
+        }
+
+        // 2. คืนสต็อกสินค้ากลับเข้าระบบ
+        const [orderDetails] = await connection.query('SELECT * FROM `orderdetails` WHERE Order_ID = ?', [orderId]);
+        for (const item of orderDetails) {
+            await connection.query(
+                'UPDATE product_variants SET Stock = Stock + ? WHERE Variant_ID = ?',
+                [item.Quantity, item.Variant_ID]
+            );
+        }
+
+        // 3. ลบข้อมูลที่เกี่ยวข้อง (ลูก) ก่อน
+        await connection.query('DELETE FROM `orderdetails` WHERE Order_ID = ?', [orderId]);
+
+        // 4. ลบออเดอร์หลัก (แม่)
+        await connection.query('DELETE FROM `orders` WHERE Order_ID = ?', [orderId]);
+        
+        await connection.commit();
+        res.status(200).json({ message: 'ลบออเดอร์ที่ยังไม่ชำระเงินสำเร็จ' });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error("Delete pending order error:", error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
+    } finally {
+        if (connection) connection.release();
     }
 };

@@ -24,15 +24,15 @@ function CountdownTimer({ expiryTime, onExpire }) {
         const timer = setTimeout(() => {
             const newTimeLeft = calculateTimeLeft();
             if (!newTimeLeft) {
-                onExpire(); // เรียก onExpire เมื่อ newTimeLeft เป็น null
+                onExpire();
             }
             setTimeLeft(newTimeLeft);
         }, 1000);
 
         return () => clearTimeout(timer);
-    }); // ไม่ต้องใส่ dependency array เพื่อให้มัน re-render ทุกวินาที
+    }); 
 
-    // 👇 **แก้ไขส่วนแสดงผลตรงนี้**
+
     return (
         <div className="text-red-500 font-bold text-2xl">
             {timeLeft ? (
@@ -103,28 +103,27 @@ export default function ManualPaymentPage() {
 };
 
 const handleCancelOrder = async () => {
-        if (!window.confirm('คุณต้องการยกเลิกรายการสั่งซื้อนี้ และกลับไปหน้าตะกร้าใช่หรือไม่?')) {
-            return;
-        }
+    if (!window.confirm('คุณต้องการยกเลิกรายการสั่งซื้อนี้ และกลับไปหน้าตะกร้าใช่หรือไม่?')) {
+        return;
+    }
 
-        try {
-            const token = localStorage.getItem('token');
-            await axios.post(
-                `${apiBase}/orders/cancel/${orderId}`, 
-                {}, // body ว่าง
-                {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }
-            );
-            alert('ยกเลิกออเดอร์สำเร็จ');
-            navigate('/cart'); // กลับไปหน้าตะกร้า
+    try {
+        const token = localStorage.getItem('token');
+        await axios.post(
+            `${apiBase}/orders/delete-pending/${orderId}`, 
+            {}, 
+            {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }
+        );
+        alert('ยกเลิกออเดอร์สำเร็จ');
+        navigate('/cart');
 
-        } catch (err) {
-            const errorMsg = err.response?.data?.message || 'ไม่สามารถยกเลิกออเดอร์ได้';
-            alert(errorMsg);
-        }
-    };
-
+    } catch (err) {
+        const errorMsg = err.response?.data?.message || 'ไม่สามารถยกเลิกออเดอร์ได้';
+        alert(errorMsg);
+    }
+};
 
     useEffect(() => {
         if (!qrCodeImage) {
@@ -208,7 +207,7 @@ const handleCancelOrder = async () => {
             className="w-full mt-4 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400"
         >
             {isUploading ? 'กำลังอัปโหลด...' : 'ยืนยันการชำระเงิน'}
-        </button>
+        </button>   
 
         {uploadMessage && (
             <p className="mt-3 text-sm font-semibold">{uploadMessage}</p>

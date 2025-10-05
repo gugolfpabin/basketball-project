@@ -120,7 +120,8 @@ exports.getUserProfile = async (req, res) => {
          res.status(500).json({ message: 'Server error while fetching profile.' });
      }
 };
-// [เพิ่ม] ฟังก์ชันสำหรับอัปเดตโปรไฟล์
+
+
 exports.updateUserProfile = async (req, res) => {
     // รับค่าทั้งหมดที่ส่งมาจากฟอร์ม Frontend
     const {
