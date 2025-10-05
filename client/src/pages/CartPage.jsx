@@ -7,6 +7,7 @@ import { Trash2, Plus, Minus, Loader, ShoppingCart } from 'lucide-react';
 
 export default function CartPage() {
     const [cartItems, setCartItems] = useState([]);
+    const [selectedMap, setSelectedMap] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
@@ -26,6 +27,12 @@ export default function CartPage() {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setCartItems(response.data);
+                // initialize selection: default to all selected
+                const map = {};
+                (response.data || []).forEach(it => { map[it.cartItemId] = true; });
+                setSelectedMap(map);
+                // notify navbar about cart count
+                window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: (response.data || []).length } }));
             } catch (err) {
                 setError('ไม่สามารถโหลดข้อมูลตะกร้าสินค้าได้');
             } finally {
@@ -99,23 +106,37 @@ const handleCheckout = async () => {
         return;
     }
 
-    console.log("2. ข้อมูลที่จะส่งไป Backend:", { // Log ที่ 2
-        items: cartItems,
-        subtotal: subtotal
-    });
+    // collect only selected items
+    const itemsToSend = cartItems.filter(it => selectedMap[it.cartItemId]);
+    if (itemsToSend.length === 0) {
+        alert('โปรดเลือกสินค้าที่ต้องการชำระเงินก่อน');
+        return;
+    }
 
     try {
         const response = await axios.post(`${apiBase}/orders/create-manual`,
             {
-                items: cartItems,
-                subtotal: subtotal
+                items: itemsToSend,
+                subtotal: selectedSubtotal
             },
             { headers: { 'Authorization': `Bearer ${token}` } }
         );
 
-        console.log("3. ได้รับข้อมูลตอบกลับจาก Backend:", response.data); // Log ที่ 3
+        // Refresh cart from server to reflect authoritative server-side changes
+        try {
+            const cartRes = await axios.get(`${apiBase}/cart`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const newCart = cartRes.data || [];
+            setCartItems(newCart);
+            // rebuild selection map (select remaining items by default)
+            const newMap = {};
+            newCart.forEach(it => { newMap[it.cartItemId] = true; });
+            setSelectedMap(newMap);
+            window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: newCart.length } }));
+            window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'สั่งซื้อสำเร็จ !' } }));
+        } catch (refreshErr) {
+            console.warn('Failed to refresh cart after checkout:', refreshErr);
+        }
         navigate('/manual-payment', { state: response.data });
-        console.log("4. กำลังจะเปลี่ยนหน้าไป /manual-payment"); // Log ที่ 4
 
     } catch (err) {
         // Log ที่สำคัญที่สุดตอนเกิดปัญหา
@@ -132,6 +153,8 @@ const handleCheckout = async () => {
     }
 };
     const subtotal = cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    const selectedItems = cartItems.filter(it => selectedMap[it.cartItemId]);
+    const selectedSubtotal = selectedItems.reduce((s, it) => s + (it.unitPrice * it.quantity), 0);
 
     if (loading) return <div className="flex justify-center items-center h-screen"><Loader className="animate-spin" /></div>;
     if (error) return <div className="text-center mt-10 text-red-500">{error}</div>;
@@ -155,8 +178,22 @@ const handleCheckout = async () => {
                     <div className="flex flex-col lg:flex-row gap-8">
                         {/* รายการสินค้า */}
                         <div className="flex-grow bg-white rounded-lg shadow p-6 h-fit">
+                            <div className="flex items-center justify-between mb-3">
+                                <label className="inline-flex items-center gap-2">
+                                    <input type="checkbox" checked={cartItems.length>0 && cartItems.every(it => selectedMap[it.cartItemId])} onChange={() => {
+                                        const all = cartItems.length>0 && cartItems.every(it => selectedMap[it.cartItemId]);
+                                        if (all) setSelectedMap({}); else {
+                                            const map = {}; cartItems.forEach(it => { map[it.cartItemId] = true; }); setSelectedMap(map);
+                                        }
+                                    }} />
+                                    <span className="text-sm">เลือกทั้งหมด</span>
+                                </label>
+                            </div>
                             {cartItems.map(item => (
                                 <div key={item.cartItemId} className="flex items-center gap-4 border-b py-4 last:border-b-0">
+                                    <div>
+                                        <input type="checkbox" checked={!!selectedMap[item.cartItemId]} onChange={(e) => setSelectedMap(prev => ({ ...prev, [item.cartItemId]: e.target.checked }))} />
+                                    </div>
                                     <img src={item.imageUrl || 'https://placehold.co/100x100'} alt={item.productName} className="w-24 h-24 object-cover rounded-md" />
                                     <div className="flex-grow">
                                         <h3 className="font-semibold text-gray-800">{item.productName}</h3>
@@ -178,8 +215,8 @@ const handleCheckout = async () => {
                         <div className="lg:w-80 bg-white rounded-lg shadow p-6 h-fit">
                             <h2 className="text-xl font-semibold border-b pb-4">สรุปรายการสั่งซื้อ</h2>
                             <div className="flex justify-between mt-4">
-                                <span>ราคารวม</span>
-                                <span>{subtotal.toFixed(2)} THB</span>
+                                <span>ราคารวม (ที่เลือก {selectedItems.length} รายการ)</span>
+                                <span>{selectedSubtotal.toFixed(2)} THB</span>
                             </div>
                             <div className="flex justify-between mt-2 text-gray-500">
                                 <span>ค่าจัดส่ง</span>
@@ -187,10 +224,10 @@ const handleCheckout = async () => {
                             </div>
                             <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg">
                                 <span>ยอดสุทธิ</span>
-                                <span>{subtotal.toFixed(2)} THB</span>
+                                <span>{selectedSubtotal.toFixed(2)} THB</span>
                             </div>
-                            <button onClick={handleCheckout} className="w-full mt-6 bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700">
-                                ไปยังหน้าชำระเงิน
+                            <button onClick={handleCheckout} disabled={selectedItems.length === 0} className={`w-full mt-6 py-3 rounded-md ${selectedItems.length === 0 ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                                {selectedItems.length === 0 ? 'โปรดเลือกสินค้าเพื่อชำระเงิน' : `ไปยังหน้าชำระเงิน (${selectedItems.length} รายการ)`}
                             </button>
                         </div>
                     </div>

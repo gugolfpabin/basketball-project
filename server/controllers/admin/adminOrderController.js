@@ -4,13 +4,36 @@ const db = require('../../db');
 
 exports.getAllOrders = async (req, res) => {
     try {
-        
-        const [orders] = await db.query(
-            `SELECT o.Order_ID, m.FirstName, m.LastName, o.TotalPrice, o.Status, o.CreatedAt
-             FROM \`orders\` o
-             JOIN \`member\` m ON o.Member_ID = m.Member_ID
-             ORDER BY o.CreatedAt DESC` 
-        );
+        const { status, startDate, endDate, page = 1 } = req.query;
+        const limit = 50;
+        const offset = (page - 1) * limit;
+
+        let where = 'WHERE 1=1';
+        const params = [];
+        if (status) {
+            where += ' AND o.Status = ?';
+            params.push(status);
+        }
+        if (startDate && endDate) {
+            where += ' AND o.CreatedAt BETWEEN ? AND ?';
+            params.push(startDate, `${endDate} 23:59:59`);
+        }
+
+        const sql = `
+            SELECT o.Order_ID, m.FirstName, m.LastName, o.TotalPrice, o.Status, o.CreatedAt,
+                   COALESCE(SUM(od.Quantity * od.UnitCost),0) as totalCost,
+                   COUNT(od.Quantity) as itemCount
+            FROM \`orders\` o
+            JOIN \`member\` m ON o.Member_ID = m.Member_ID
+            LEFT JOIN \`orderdetails\` od ON o.Order_ID = od.Order_ID
+            ${where}
+            GROUP BY o.Order_ID
+            ORDER BY o.CreatedAt DESC
+            LIMIT ? OFFSET ?
+        `;
+        params.push(limit, offset);
+
+        const [orders] = await db.query(sql, params);
 
         res.status(200).json(orders);
 
@@ -48,7 +71,7 @@ exports.getOrderById = async (req, res) => {
 
         const [detailRows] = await connection.query(
             `SELECT 
-                od.Quantity, od.UnitPrice, 
+                od.Quantity, od.UnitPrice, od.UnitCost,
                 p.ProductName, 
                 pv.color, pv.size, 
                 (SELECT PictureURL FROM picture pi 

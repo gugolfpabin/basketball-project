@@ -19,7 +19,7 @@ export default function AdminOrderDetailPage() {
     const statusOptions = [
         { id: 'verifying', name: 'ระหว่างตรวจสอบ' },
         { id: 'completed', name: 'ชำระเงินเสร็จสิ้น' },
-        { id: ' ', name: 'ยกเลิก' },
+        { id: 'cancelled', name: 'ยกเลิก' },
     ];
 
     useEffect(() => {
@@ -109,14 +109,14 @@ export default function AdminOrderDetailPage() {
                         <div className="w-full md:w-6/12 flex items-center text-sm">
                             <div className="w-4/12 md:w-4/12 text-left md:text-right">
                                 <span className="md:hidden text-gray-500 mr-2">ราคา:</span>
-                                <span>{Number(item.UnitPrice).toFixed(2)}</span>
+                                <span>{Number(item.UnitPrice || item.Price || item.Unit_Price || item.unitPrice || 0).toFixed(2)}</span>
                             </div>
                             <div className="w-4/12 md:w-2/12 text-center">
                                 <span className="md:hidden text-gray-500 mr-2">จำนวน:</span>
                                 <span>x{item.Quantity}</span>
                             </div>
                             <div className="w-4/12 md:w-6/12 text-right font-semibold text-base">
-                                {Number(item.Quantity * item.UnitPrice).toFixed(2)} บาท
+                                {Number(item.Quantity * (item.UnitPrice || item.Price || item.Unit_Price || item.unitPrice || 0)).toFixed(2)} บาท
                             </div>
                         </div>
                     </div>

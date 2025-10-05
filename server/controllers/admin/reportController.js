@@ -9,21 +9,21 @@ exports.getSalesReport = async (req, res) => {
 
         switch (granularity) {
             case 'day':
-                selectClause = "DATE_FORMAT(CreatedAt, '%Y-%m-%d') as date";
-                groupByClause = "GROUP BY DATE_FORMAT(CreatedAt, '%Y-%m-%d')";
+                selectClause = "DATE_FORMAT(o.CreatedAt, '%Y-%m-%d') as date";
+                groupByClause = "GROUP BY DATE_FORMAT(o.CreatedAt, '%Y-%m-%d')";
                 break;
             case 'year':
-                selectClause = "YEAR(CreatedAt) as date";
-                groupByClause = "GROUP BY YEAR(CreatedAt)";
+                selectClause = "YEAR(o.CreatedAt) as date";
+                groupByClause = "GROUP BY YEAR(o.CreatedAt)";
                 break;
             case 'month':
             default:
-                selectClause = "DATE_FORMAT(CreatedAt, '%Y-%m') as date";
-                groupByClause = "GROUP BY DATE_FORMAT(CreatedAt, '%Y-%m')";
+                selectClause = "DATE_FORMAT(o.CreatedAt, '%Y-%m') as date";
+                groupByClause = "GROUP BY DATE_FORMAT(o.CreatedAt, '%Y-%m')";
                 break;
         }
 
-        let whereClause = "WHERE Status = 'completed'";
+    let whereClause = "WHERE o.Status = 'completed'";
         const params = [];
 
         if (startDate && endDate) {
@@ -35,17 +35,39 @@ exports.getSalesReport = async (req, res) => {
         const sql = `
             SELECT
                 ${selectClause},
-                SUM(TotalPrice) as totalSales,
-                COUNT(Order_ID) as orderCount
-            FROM \`orders\`
+                COALESCE(SUM(od.Quantity * od.UnitPrice), 0) as totalSales,
+                COALESCE(SUM(od.Quantity * od.UnitCost), 0) as totalCost,
+                COALESCE(SUM(od.Quantity * od.UnitPrice),0) - COALESCE(SUM(od.Quantity * od.UnitCost),0) as totalProfit,
+                COUNT(DISTINCT o.Order_ID) as orderCount
+            FROM \`orders\` o
+            JOIN \`orderdetails\` od ON o.Order_ID = od.Order_ID
             ${whereClause}
             ${groupByClause}
             ORDER BY date ASC
         `;
-        
+
         const [reportData] = await db.query(sql, params);
         
-        res.status(200).json(reportData);
+        // --- product breakdown per period ---
+        const productSql = `
+            SELECT
+                ${selectClause},
+                p.Product_ID,
+                p.ProductName,
+                COALESCE(SUM(od.Quantity),0) as qtySold,
+                COALESCE(SUM(od.Quantity * od.UnitPrice),0) as sales,
+                COALESCE(SUM(od.Quantity * od.UnitCost),0) as cost
+            FROM \`orders\` o
+            JOIN \`orderdetails\` od ON o.Order_ID = od.Order_ID
+            JOIN \`product\` p ON od.Variant_ID = (SELECT Variant_ID FROM product_variants pv WHERE pv.Variant_ID = od.Variant_ID LIMIT 1)
+            ${whereClause}
+            GROUP BY date, p.Product_ID, p.ProductName
+            ORDER BY date ASC, qtySold DESC
+        `;
+
+        const [productBreakdown] = await db.query(productSql, params);
+
+        res.status(200).json({ reportData, productBreakdown });
 
     } catch (error) {
         console.error("Get sales report error:", error);

@@ -104,11 +104,16 @@ exports.uploadSlip = async (req, res) => {
             "UPDATE `orders` SET SlipImageURL = ?, Status = 'verifying' WHERE Order_ID = ?",
             [slipImageUrl, orderId]
         );
-        const [cartRows] = await db.query('SELECT Cart_ID FROM cart WHERE Member_ID = ?', [memberId]);
-        if (cartRows.length > 0) {
-            const cartId = cartRows[0].Cart_ID;
-            // สั่งลบ cartitem ทั้งหมดที่อยู่ในตะกร้าของผู้ใช้คนนี้
-            await db.query('DELETE FROM cartitem WHERE Cart_ID = ?', [cartId]);
+        // Only remove cartitems that belong to variants present in the orderdetails of this order
+        const [orderDetails] = await db.query('SELECT Variant_ID FROM orderdetails WHERE Order_ID = ?', [orderId]);
+        if (orderDetails.length > 0) {
+            const variantIds = orderDetails.map(d => d.Variant_ID);
+            const [cartRows] = await db.query('SELECT Cart_ID FROM cart WHERE Member_ID = ?', [memberId]);
+            if (cartRows.length > 0) {
+                const cartId = cartRows[0].Cart_ID;
+                // delete only cartitems whose Variant_ID are in the ordered variants
+                await db.query('DELETE FROM cartitem WHERE Cart_ID = ? AND Variant_ID IN (?)', [cartId, variantIds]);
+            }
         }
         res.status(200).json({ message: 'อัปโหลดสลิปสำเร็จ! เราจะตรวจสอบและแจ้งผลให้คุณทราบ' });
 

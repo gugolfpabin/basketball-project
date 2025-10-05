@@ -1,8 +1,7 @@
-// src/pages/ManualPaymentPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 
 function CountdownTimer({ expiryTime, onExpire }) {
     const calculateTimeLeft = () => {
@@ -30,24 +29,20 @@ function CountdownTimer({ expiryTime, onExpire }) {
         }, 1000);
 
         return () => clearTimeout(timer);
-    }); 
-
+    });
 
     return (
         <div className="text-red-500 font-bold text-2xl">
             {timeLeft ? (
-                // ถ้ายังมีเวลาเหลือ ให้แสดงผลแบบนี้
                 <span>
                     หมดอายุใน: {String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
                 </span>
             ) : (
-                // ถ้าเวลาหมดแล้ว
                 <span>QR Code หมดอายุแล้ว</span>
             )}
         </div>
     );
 }
-
 
 export default function ManualPaymentPage() {
     const location = useLocation();
@@ -58,163 +53,396 @@ export default function ManualPaymentPage() {
     const [uploadMessage, setUploadMessage] = useState('');
     const [isUploading, setIsUploading] = useState(false);
 
+    // Address / profile state (we'll reuse similar fields as ProfilePage)
+    const [address, setAddress] = useState(null);
+    const [loadingAddress, setLoadingAddress] = useState(true);
+
+    // Edit popup state (form mirrors ProfilePage fields)
+    const [showEdit, setShowEdit] = useState(false);
+    const [editData, setEditData] = useState({
+        Title: '',
+        FirstName: '',
+        LastName: '',
+        Phone: '',
+        Address: '',
+        Province_ID: '',
+        District_ID: '',
+        Subdistrict_ID: '',
+        PostalCode: ''
+    });
+    const [editLoading, setEditLoading] = useState(false);
+    const [editError, setEditError] = useState('');
+    const [editSuccess, setEditSuccess] = useState('');
+
+    const [provinces, setProvinces] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [subdistricts, setSubdistricts] = useState([]);
+
     const apiBase = 'http://localhost:5000/api';
+
+    useEffect(() => {
+        // Fetch profile/address. If no token, fallback to sample data provided by user.
+        const fetchAddress = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // fallback sample data as requested
+                setAddress({
+                    Title: 'นาย',
+                    FirstName: 'test',
+                    LastName: 'd',
+                    Phone: '1234567890',
+                    Address: '12333 ต.ท่ามะนาว อ.ชัยบาดาล จ.ลพบุรี 15130',
+                    Province_ID: '',
+                    District_ID: '',
+                    Subdistrict_ID: '',
+                    PostalCode: ''
+                });
+                setLoadingAddress(false);
+                return;
+            }
+
+            try {
+                const res = await axios.get(`${apiBase}/profile`, { headers: { Authorization: `Bearer ${token}` } });
+                const userData = res.data;
+                setAddress(userData);
+            } catch (err) {
+                console.error('Failed to fetch profile:', err);
+                setAddress(null);
+            } finally {
+                setLoadingAddress(false);
+            }
+        };
+        fetchAddress();
+        // also load provinces for the edit popup
+        axios.get(`${apiBase}/provinces`).then(r => setProvinces(r.data)).catch(() => {});
+    }, []);
 
     const handleFileChange = (event) => {
         setSelectedFile(event.target.files[0]);
     };
 
     const handleSlipSubmit = async () => {
-    try {
-        setIsUploading(true);
-        setUploadMessage('');
-        const token = localStorage.getItem('token');
+        try {
+            setIsUploading(true);
+            setUploadMessage('');
+            const token = localStorage.getItem('token');
 
-        const formData = new FormData();
-        formData.append('slipImage', selectedFile);
+            const formData = new FormData();
+            formData.append('slipImage', selectedFile);
 
-        console.log("🚀 กำลังจะส่งข้อมูลไปที่ Server...");
-        
-        const response = await axios.post(
-            `${apiBase}/orders/upload-slip/${orderId}`,
-            formData,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    'Authorization': `Bearer ${token}`
+            const response = await axios.post(
+                `${apiBase}/orders/upload-slip/${orderId}`,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'Authorization': `Bearer ${token}`
+                    }
                 }
-            }
-        );
-        
-        console.log("🎉 ได้รับการตอบกลับจาก Server:", response.data);
-        setUploadMessage(response.data.message);
-        alert('อัปโหลดสลิปสำเร็จ!');
-        setTimeout(() => {
-            navigate('/cart'); 
-        }, 1000);
+            );
+            setUploadMessage(response.data.message);
+            setTimeout(() => {
+                navigate('/cart');
+            }, 1000);
 
-    } catch (err) {
-        console.error("🔥 เกิดข้อผิดพลาดร้ายแรงใน 'catch' block:", err);
-        const errorMsg = err.response?.data?.message || 'อัปโหลดไม่สำเร็จ';
-        setUploadMessage(errorMsg);
-    } finally {
-        setIsUploading(false);
-    }
-};
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'อัปโหลดไม่สำเร็จ';
+            setUploadMessage(errorMsg);
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
-const handleCancelOrder = async () => {
-    if (!window.confirm('คุณต้องการยกเลิกรายการสั่งซื้อนี้ และกลับไปหน้าตะกร้าใช่หรือไม่?')) {
-        return;
-    }
+    const handleCancelOrder = async () => {
+        if (!window.confirm('คุณต้องการยกเลิกรายการสั่งซื้อนี้ และกลับไปหน้าตะกร้าใช่หรือไม่?')) {
+            return;
+        }
 
-    try {
-        const token = localStorage.getItem('token');
-        await axios.post(
-            `${apiBase}/orders/delete-pending/${orderId}`, 
-            {}, 
-            {
-                headers: { 'Authorization': `Bearer ${token}` }
-            }
-        );
-        alert('ยกเลิกออเดอร์สำเร็จ');
-        navigate('/cart');
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(
+                `${apiBase}/orders/delete-pending/${orderId}`,
+                {},
+                {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }
+            );
+            alert('ยกเลิกออเดอร์สำเร็จ');
+            navigate('/cart');
 
-    } catch (err) {
-        const errorMsg = err.response?.data?.message || 'ไม่สามารถยกเลิกออเดอร์ได้';
-        alert(errorMsg);
-    }
-};
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'ไม่สามารถยกเลิกออเดอร์ได้';
+            alert(errorMsg);
+        }
+    };
 
     useEffect(() => {
         if (!qrCodeImage) {
-            navigate('/cart'); // ถ้าไม่มีข้อมูล QR ให้กลับไปหน้าตะกร้า
+            navigate('/cart');
         }
     }, [qrCodeImage, navigate]);
 
-    return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-        {/* เพิ่ม 'relative' เผื่อไว้ แต่ไม่จำเป็นสำหรับวิธีนี้ */}
-        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg text-center w-full max-w-md relative">
+    // --- Edit popup logic ---
+    const openEdit = () => {
+        setEditError('');
+        setEditSuccess('');
+        setEditData({
+            Title: address?.Title || '',
+            FirstName: address?.FirstName || '',
+            LastName: address?.LastName || '',
+            Phone: address?.Phone || '',
+            Address: address?.Address || '',
+            Province_ID: address?.Province_ID || '',
+            District_ID: address?.District_ID || '',
+            Subdistrict_ID: address?.Subdistrict_ID || '',
+            PostalCode: address?.PostalCode || ''
+        });
+        setShowEdit(true);
+    };
 
-            {/* --- แถวหัวเรื่องที่แก้ไขใหม่ (วิธี Flexbox 3 ช่อง) --- */}
-            <div className="flex items-center justify-between mb-4">
-                {/* ช่องซ้าย: สำหรับปุ่มลูกศร */}
-                <div className="w-1/5 text-left">
-                    {!isExpired && (
+    const handleEditChange = (e) => {
+        setEditData({ ...editData, [e.target.name]: e.target.value });
+    };
+
+    useEffect(() => {
+        if (editData.Province_ID) {
+            axios.get(`${apiBase}/districts?provinceId=${editData.Province_ID}`)
+                .then(res => setDistricts(res.data)).catch(() => setDistricts([]));
+        } else {
+            setDistricts([]);
+            setEditData(prev => ({ ...prev, District_ID: '', Subdistrict_ID: '', PostalCode: '' }));
+        }
+    }, [editData.Province_ID]);
+
+    useEffect(() => {
+        if (editData.District_ID) {
+            axios.get(`${apiBase}/subdistricts?districtId=${editData.District_ID}`)
+                .then(res => setSubdistricts(res.data)).catch(() => setSubdistricts([]));
+        } else {
+            setSubdistricts([]);
+            setEditData(prev => ({ ...prev, Subdistrict_ID: '', PostalCode: '' }));
+        }
+    }, [editData.District_ID]);
+
+    useEffect(() => {
+        if (editData.Subdistrict_ID) {
+            axios.get(`${apiBase}/zipcode?subdistrictId=${editData.Subdistrict_ID}`)
+                .then(res => setEditData(prev => ({ ...prev, PostalCode: res.data?.PostalCode || '' })))
+                .catch(() => {});
+        }
+    }, [editData.Subdistrict_ID]);
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        setEditLoading(true);
+        setEditError('');
+        setEditSuccess('');
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // for local/demo mode just update UI
+                setAddress(editData);
+                setEditSuccess('บันทึกสำเร็จ (ท้องถิ่น)');
+                setShowEdit(false);
+            } else {
+                await axios.put(`${apiBase}/profile`, editData, { headers: { Authorization: `Bearer ${token}` } });
+                setEditSuccess('บันทึกสำเร็จ');
+                setAddress(editData);
+                setShowEdit(false);
+            }
+        } catch (err) {
+            setEditError('เกิดข้อผิดพลาดในการบันทึก');
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+            <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg text-center w-full max-w-md relative">
+
+                {/* --- Header --- */}
+                <div className="flex items-center justify-between mb-4">
+                    <div className="w-1/5 text-left">
+                        {!isExpired && (
+                            <button
+                                onClick={handleCancelOrder}
+                                className="text-gray-400 hover:text-gray-600"
+                                title="ยกเลิกและกลับไปที่ตะกร้า"
+                            >
+                                <ArrowLeft size={24} />
+                            </button>
+                        )}
+                    </div>
+                    <div className="w-3/5">
+                        <h1 className="text-xl sm:text-2xl font-bold">
+                            ชำระเงินผ่าน QR Code
+                        </h1>
+                    </div>
+                    <div className="w-1/5"></div>
+                </div>
+                {/* --- End Header --- */}
+
+                {/* --- Address Section --- */}
+                <div className="bg-gray-50 border rounded-md p-4 mb-4 text-left">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-gray-700">ที่อยู่สำหรับจัดส่ง</span>
                         <button
-                            onClick={handleCancelOrder}
-                            className="text-gray-400 hover:text-gray-600"
-                            title="ยกเลิกและกลับไปที่ตะกร้า"
+                            type="button"
+                            className="text-blue-600 hover:underline text-sm"
+                            title="แก้ไขที่อยู่"
+                            onClick={openEdit}
                         >
-                            <ArrowLeft size={24} />
+                            แก้ไข
                         </button>
+                    </div>
+                    {loadingAddress ? (
+                        <span className="text-gray-400 text-sm">กำลังโหลด...</span>
+                    ) : address ? (
+                        <div className="text-gray-700 text-sm whitespace-pre-line">
+                            <div><b>ชื่อ:</b> {address.Title} {address.FirstName} {address.LastName}</div>
+                            <div><b>เบอร์โทร:</b> {address.Phone}</div>
+                            <div><b>ที่อยู่:</b> {address.Address}</div>
+                            {address.PostalCode && <div><b>รหัสไปรษณีย์:</b> {address.PostalCode}</div>}
+                        </div>
+                    ) : (
+                        <span className="text-red-500 text-sm">ไม่พบข้อมูลที่อยู่</span>
                     )}
                 </div>
+                {/* --- End Address Section --- */}
 
-                {/* ช่องกลาง: สำหรับหัวเรื่อง */}
-                <div className="w-3/5">
-                    <h1 className="text-xl sm:text-2xl font-bold">
-                        ชำระเงินผ่าน QR Code
-                    </h1>
-                </div>
+                {/* --- Popup Edit Address --- */}
+                {showEdit && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
+                            <button
+                                className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+                                onClick={() => setShowEdit(false)}
+                                title="ปิด"
+                            >
+                                <X size={20} />
+                            </button>
+                            <h2 className="text-lg font-bold mb-4">แก้ไขข้อมูลส่วนตัว / ที่อยู่</h2>
+                            <form onSubmit={handleEditSubmit} className="space-y-3 text-left">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-sm mb-1">คำนำหน้า</label>
+                                        <select name="Title" value={editData.Title} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required>
+                                            <option value="">เลือก</option>
+                                            <option value="นาย">นาย</option>
+                                            <option value="นางสาว">นางสาว</option>
+                                            <option value="นาง">นาง</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm mb-1">เบอร์โทรศัพท์</label>
+                                        <input name="Phone" value={editData.Phone} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm mb-1">ชื่อ</label>
+                                        <input name="FirstName" value={editData.FirstName} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm mb-1">นามสกุล</label>
+                                        <input name="LastName" value={editData.LastName} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required />
+                                    </div>
+                                </div>
 
-                {/* ช่องขวา: เว้นว่างไว้เพื่อความสมดุล */}
-                <div className="w-1/5"></div>
-            </div>
-            {/* --- จบส่วนหัวเรื่อง --- */}
+                                <div>
+                                    <label className="block text-sm mb-1">บ้านเลขที่ / ที่อยู่</label>
+                                    <textarea name="Address" value={editData.Address} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required />
+                                </div>
 
-            {/* (ลบ h1 และ button เก่าที่คุณใส่ไว้ข้างบนสุดออก) */}
-            
-            <p className="text-gray-600 mb-2">หมายเลขออเดอร์ของคุณคือ: <span className="font-bold text-blue-600">{orderId}</span></p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-sm mb-1">จังหวัด</label>
+                                        <select name="Province_ID" value={editData.Province_ID} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required>
+                                            <option value="">เลือกจังหวัด</option>
+                                            {provinces.map(p => <option key={p.Province_ID} value={p.Province_ID}>{p.ProvinceName}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm mb-1">อำเภอ</label>
+                                        <select name="District_ID" value={editData.District_ID} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required disabled={!editData.Province_ID}>
+                                            <option value="">เลือกอำเภอ</option>
+                                            {districts.map(d => <option key={d.District_ID} value={d.District_ID}>{d.DistrictName}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm mb-1">ตำบล</label>
+                                        <select name="Subdistrict_ID" value={editData.Subdistrict_ID} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required disabled={!editData.District_ID}>
+                                            <option value="">เลือกตำบล</option>
+                                            {subdistricts.map(s => <option key={s.Subdistrict_ID} value={s.Subdistrict_ID}>{s.SubdistrictName}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm mb-1">รหัสไปรษณีย์</label>
+                                        <input name="PostalCode" value={editData.PostalCode} readOnly className="w-full border rounded px-2 py-1 bg-gray-100" />
+                                    </div>
+                                </div>
 
-            {qrCodeImage && !isExpired ? (
-                <>
-                    <img src={qrCodeImage} alt="QR Code" className="mx-auto border-4 border-gray-300 rounded-lg" />
-                    <p className="text-2xl sm:text-3xl font-bold my-4">ยอดชำระ: {Number(totalAmount).toFixed(2)} บาท</p>
-                    <div className="mt-4">
-                        <CountdownTimer expiryTime={expiresAt} onExpire={() => setIsExpired(true)} />
+                                {editError && <div className="text-red-500 text-sm">{editError}</div>}
+                                {editSuccess && <div className="text-green-600 text-sm">{editSuccess}</div>}
+                                <div className="flex justify-end gap-2">
+                                    <button type="button" className="px-4 py-1 rounded bg-gray-200 hover:bg-gray-300" onClick={() => setShowEdit(false)}>ยกเลิก</button>
+                                    <button type="submit" className="px-4 py-1 rounded bg-blue-600 text-white hover:bg-blue-700" disabled={editLoading}>{editLoading ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                    <p className="mt-4 text-sm text-gray-500">
-                        กรุณาสแกน QR Code เพื่อชำระเงิน และ **บันทึกสลิป** ไว้เป็นหลักฐานสำหรับการแจ้งชำระเงิน
-                    </p>
-                </>
-            ) : (
-                <div className="my-10">
-                    <h2 className="text-2xl font-bold text-red-600">QR Code หมดอายุแล้ว</h2>
-                    <p className="text-gray-600 mt-2">กรุณากลับไปที่หน้าตะกร้าสินค้าเพื่อทำรายการใหม่อีกครั้ง</p>
-                    <Link to="/cart" className="mt-6 inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
-                        กลับไปหน้าตะกร้า
-                    </Link>
-                </div>
-            )}
-            {!isExpired && (
-    <div className="border-t mt-6 pt-6">
-        <h2 className="text-lg font-semibold mb-3">แจ้งชำระเงิน</h2>
-        <p className="text-sm text-gray-500 mb-4">
-            หลังจากชำระเงินแล้ว กรุณาอัปโหลดสลิปเพื่อยืนยัน
-        </p>
-        
-        <input
-            type="file"
-            onChange={handleFileChange}
-            accept="image/png, image/jpeg, image/gif"
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-        />
+                )}
+                {/* --- End Popup --- */}
 
-        <button
-            onClick={handleSlipSubmit}
-            disabled={isUploading || !selectedFile}
-            className="w-full mt-4 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400"
-        >
-            {isUploading ? 'กำลังอัปโหลด...' : 'ยืนยันการชำระเงิน'}
-        </button>   
+                <p className="text-gray-600 mb-2">หมายเลขออเดอร์ของคุณคือ: <span className="font-bold text-blue-600">{orderId}</span></p>
 
-        {uploadMessage && (
-            <p className="mt-3 text-sm font-semibold">{uploadMessage}</p>
-        )}
-    </div>
-)}
+                {qrCodeImage && !isExpired ? (
+                    <>
+                        <img src={qrCodeImage} alt="QR Code" className="mx-auto border-4 border-gray-300 rounded-lg" />
+                        <p className="text-2xl sm:text-3xl font-bold my-4">ยอดชำระ: {Number(totalAmount).toFixed(2)} บาท</p>
+                        <div className="mt-4">
+                            <CountdownTimer expiryTime={expiresAt} onExpire={() => setIsExpired(true)} />
+                        </div>
+                        <p className="mt-4 text-sm text-gray-500">
+                            กรุณาสแกน QR Code เพื่อชำระเงิน และ <b>บันทึกสลิป</b> ไว้เป็นหลักฐานสำหรับการแจ้งชำระเงิน
+                        </p>
+                    </>
+                ) : (
+                    <div className="my-10">
+                        <h2 className="text-2xl font-bold text-red-600">QR Code หมดอายุแล้ว</h2>
+                        <p className="text-gray-600 mt-2">กรุณากลับไปที่หน้าตะกร้าสินค้าเพื่อทำรายการใหม่อีกครั้ง</p>
+                        <Link to="/cart" className="mt-6 inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">
+                            กลับไปหน้าตะกร้า
+                        </Link>
+                    </div>
+                )}
+                {!isExpired && (
+                    <div className="border-t mt-6 pt-6">
+                        <h2 className="text-lg font-semibold mb-3">แจ้งชำระเงิน</h2>
+                        <p className="text-sm text-gray-500 mb-4">
+                            หลังจากชำระเงินแล้ว กรุณาอัปโหลดสลิปเพื่อยืนยัน
+                        </p>
+
+                        <input
+                            type="file"
+                            onChange={handleFileChange}
+                            accept="image/png, image/jpeg, image/gif"
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+
+                        <button
+                            onClick={handleSlipSubmit}
+                            disabled={isUploading || !selectedFile}
+                            className="w-full mt-4 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400"
+                        >
+                            {isUploading ? 'กำลังอัปโหลด...' : 'ยืนยันการชำระเงิน'}
+                        </button>
+
+                        {uploadMessage && (
+                            <p className="mt-3 text-sm font-semibold">{uploadMessage}</p>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
-    </div>
-);
+    );
 }

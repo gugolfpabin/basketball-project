@@ -57,8 +57,10 @@ export default function AdminDashboardPage() {
   const [user, setUser] = useState(null);
   const [anchorElUser, setAnchorElUser] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
   const [anchorElCategoryDropdown, setAnchorElCategoryDropdown] = useState(null);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(0);
 
@@ -88,11 +90,14 @@ export default function AdminDashboardPage() {
   // --- Debounce Effect ---
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 700);
+        setDebouncedSearchTerm(searchTerm);
+    }, 500); 
 
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
+  
+    return () => {
+        clearTimeout(handler);
+    };
+}, [searchTerm]);
 
   // --- Fetch Products ---
   const fetchProducts = async () => {
@@ -130,6 +135,8 @@ export default function AdminDashboardPage() {
 
   // --- User Authentication ---
   useEffect(() => {
+
+    
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {

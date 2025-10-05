@@ -15,6 +15,21 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
+// helper: export reportData to CSV
+function exportCSV(data) {
+    if (!data || !data.length) return;
+    const headers = ['date','totalSales','totalCost','totalProfit','orderCount'];
+    const rows = data.map(r => headers.map(h => (r[h] != null ? String(r[h]) : '')).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `report_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 // ลงทะเบียน Component ที่จำเป็นสำหรับ Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -35,6 +50,11 @@ export default function AdminReportPage() {
     const [granularity, setGranularity] = useState('month');
     const [startDate, setStartDate] = useState(startOfMonth(new Date()));
     const [endDate, setEndDate] = useState(endOfMonth(new Date()));
+    const [productBreakdown, setProductBreakdown] = useState([]);
+    const [viewMode, setViewMode] = useState('summary'); // 'summary' or 'orders'
+    const [ordersList, setOrdersList] = useState([]);
+    const [expandedOrderId, setExpandedOrderId] = useState(null);
+    const [orderDetailsMap, setOrderDetailsMap] = useState({});
     const apiBase = 'http://localhost:5000/api/admin';
 
     // --- User Authentication ---
@@ -71,7 +91,31 @@ export default function AdminReportPage() {
                     headers: { 'Authorization': `Bearer ${token}` },
                     params
                 });
-                setReportData(response.data);
+                // server now returns { reportData, productBreakdown }
+                const payload = response.data;
+                // Normalize report rows so the UI always uses these keys: date, totalSales, totalCost, totalProfit, orderCount
+                const rawReport = (payload.reportData || payload || []);
+                const parseNumber = (v) => {
+                    if (v == null) return 0;
+                    if (typeof v === 'number') return v;
+                    if (typeof v === 'string') {
+                        // remove whitespace, commas and common currency symbols then remove any other non-digit except dot and minus
+                        const cleaned = v.replace(/[,\s฿€£¥]/g, '').replace(/[^0-9.-]/g, '');
+                        const n = parseFloat(cleaned);
+                        return isNaN(n) ? 0 : n;
+                    }
+                    return 0;
+                };
+                const normalizeRow = (r) => ({
+                    date: r.date || r.Date || r.reportDate || r.day || r.label || '',
+                    totalSales: parseNumber(r.totalSales ?? r.total_sales ?? r.TotalSales ?? r.sales ?? r.revenue ?? 0),
+                    totalCost: parseNumber(r.totalCost ?? r.total_cost ?? r.TotalCost ?? r.cost ?? r.totalCostFromProducts ?? 0),
+                    totalProfit: parseNumber(r.totalProfit ?? r.total_profit ?? r.TotalProfit ?? ( (r.totalSales ?? r.total_sales ?? r.TotalSales) - (r.totalCost ?? r.total_cost ?? r.TotalCost) ) ?? 0),
+                    orderCount: Number(r.orderCount ?? r.order_count ?? r.OrderCount ?? r.orders ?? 0) || 0,
+                });
+                const normalized = Array.isArray(rawReport) ? rawReport.map(normalizeRow) : [];
+                setReportData(normalized);
+                setProductBreakdown(payload.productBreakdown || []);
             } catch (err) {
                 setError("ไม่สามารถโหลดข้อมูลรายงานได้");
             } finally {
@@ -80,6 +124,38 @@ export default function AdminReportPage() {
         };
         fetchReport();
     }, [granularity, startDate, endDate]);
+
+    // Fetch completed orders when viewMode is 'orders'
+    useEffect(() => {
+        const fetchOrders = async () => {
+            if (viewMode !== 'orders') return;
+            setLoading(true);
+                try {
+                const token = localStorage.getItem('token');
+                const params = {
+                    status: 'completed',
+                    startDate: format(startDate, 'yyyy-MM-dd'),
+                    endDate: format(endDate, 'yyyy-MM-dd'),
+                    page: 1
+                };
+                // call admin orders endpoint
+                const res = await axios.get(`${apiBase}/orders`, { headers: { Authorization: `Bearer ${token}` }, params });
+                // server may return array or { orders: [...] }
+                const all = res.data.orders || res.data || [];
+                const filtered = (all || []).filter(o => {
+                    const status = (o.Status || o.status || o.StatusName || '').toString().toLowerCase();
+                    return !!status && (status.includes('completed') || status.includes('paid') || status.includes('ชำระ') || status.includes('สำเร็จ'));
+                });
+                setOrdersList(filtered);
+            } catch (err) {
+                console.error('Failed to fetch orders', err);
+                setOrdersList([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchOrders();
+    }, [viewMode, startDate, endDate]);
 
 
     // --- Handlers for Layout ---
@@ -103,6 +179,18 @@ export default function AdminReportPage() {
             backgroundColor: 'rgba(54, 162, 235, 0.6)',
             borderColor: 'rgba(54, 162, 235, 1)',
             borderWidth: 1,
+        }, {
+            label: 'ต้นทุน (บาท)',
+            data: reportData.map(d => d.totalCost || 0),
+            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+        }, {
+            label: 'กำไร (บาท)',
+            data: reportData.map(d => d.totalProfit || ( (d.totalSales || 0) - (d.totalCost || 0) )),
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
         }],
     };
     const chartOptions = {
@@ -111,9 +199,25 @@ export default function AdminReportPage() {
             legend: { position: 'top' },
             title: { display: true, text: `รายงานยอดขายแบบราย${granularity === 'day' ? 'วัน' : granularity === 'month' ? 'เดือน' : 'ปี'}` },
         },
+        scales: {
+            x: { stacked: false },
+            y: { stacked: false }
+        },
     };
-    const totalRevenue = reportData.reduce((sum, item) => sum + parseFloat(item.totalSales), 0);
-    const totalOrders = reportData.reduce((sum, item) => sum + item.orderCount, 0);
+    const formatTHB = (value) => Number(value || 0).toLocaleString('th-TH', { style: 'currency', currency: 'THB' });
+    const totalRevenue = reportData.reduce((sum, item) => sum + parseFloat(item.totalSales || 0), 0);
+    const totalCostFromReport = reportData.reduce((sum, item) => sum + parseFloat(item.totalCost || 0), 0);
+    // prefer report costs, otherwise fallback to product breakdown
+    const totalCost = totalCostFromReport > 0 ? totalCostFromReport : productBreakdown.reduce((s, p) => s + (parseFloat(p.cost || 0) || 0), 0);
+    // compute profit from totals to remain consistent with fallback
+    const totalProfit = totalRevenue - totalCost;
+    const totalOrders = reportData.reduce((sum, item) => sum + (item.orderCount || 0), 0);
+    const avgOrderValue = totalOrders ? totalRevenue / totalOrders : 0;
+    // sanity: compute totalCost from productBreakdown as well
+    const totalCostFromProducts = productBreakdown.reduce((s, p) => s + (parseFloat(p.cost || 0) || 0), 0);
+    if (totalCostFromProducts > 0 && Math.abs(totalCostFromProducts - totalCost) > 1) {
+        console.warn('Total cost from reportData and productBreakdown differ:', totalCost, totalCostFromProducts);
+    }
 
     // --- Drawer JSX (เหมือนเดิม) ---
     const drawer = (
@@ -165,25 +269,180 @@ export default function AdminReportPage() {
                         <ToggleButton value="month">รายเดือน</ToggleButton>
                         <ToggleButton value="year">รายปี</ToggleButton>
                     </ToggleButtonGroup>
-                    <DatePicker label="วันที่เริ่มต้น" value={startDate} onChange={(date) => setStartDate(date)} />
-                    <DatePicker label="วันที่สิ้นสุด" value={endDate} onChange={(date) => setEndDate(date)} />
+                    <ToggleButtonGroup value={viewMode} exclusive onChange={(e, val) => val && setViewMode(val)} sx={{ ml: 2 }}>
+                        <ToggleButton value="summary">สรุป</ToggleButton>
+                        <ToggleButton value="orders">ออเดอร์ (รายการ)</ToggleButton>
+                    </ToggleButtonGroup>
+                    <DatePicker
+                        label="วันที่เริ่มต้น"
+                        value={startDate}
+                        views={granularity === 'year' ? ['year'] : granularity === 'month' ? ['year','month'] : ['year','month','day']}
+                        onChange={(date) => setStartDate(date)}
+                    />
+                    <DatePicker
+                        label="วันที่สิ้นสุด"
+                        value={endDate}
+                        views={granularity === 'year' ? ['year'] : granularity === 'month' ? ['year','month'] : ['year','month','day']}
+                        onChange={(date) => setEndDate(date)}
+                    />
+                    <Button variant="outlined" onClick={() => {
+                        // quick preset: this period
+                        const now = new Date();
+                        if (granularity === 'day') {
+                            setStartDate(now); setEndDate(now);
+                        } else if (granularity === 'month') {
+                            setStartDate(startOfMonth(now)); setEndDate(endOfMonth(now));
+                        } else {
+                            setStartDate(new Date(now.getFullYear(), 0, 1)); setEndDate(new Date(now.getFullYear(), 11, 31));
+                        }
+                    }}>วันนี้</Button>
+                    <Button sx={{ ml: 1 }} variant="contained" color="secondary" onClick={() => exportCSV(reportData)}>Export CSV</Button>
                 </Paper>
 
                 {loading ? <CircularProgress /> : error ? <Typography color="error">{error}</Typography> : (
                     <>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 4 }}>
-                            <Paper sx={{ p: 3, textAlign: 'center' }}>
-                                <Typography variant="h6" color="text.secondary">ยอดขายรวม</Typography>
-                                <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{totalRevenue.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</Typography>
+                        {viewMode === 'summary' ? (
+                            <>
+                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 4 }}>
+                                    <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                        <Typography variant="h6" color="text.secondary">ยอดขายรวม</Typography>
+                                        <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{totalRevenue.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</Typography>
+                                    </Paper>
+                                    <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                        <Typography variant="h6" color="text.secondary">ต้นทุนรวม</Typography>
+                                        <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{totalCost.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</Typography>
+                                        {totalCost === 0 && (productBreakdown && productBreakdown.length > 0) && (
+                                            <Typography variant="caption" color="text.secondary">(คำนวณจาก product breakdown)</Typography>
+                                        )}
+                                        {totalCost > 0 && (totalCostFromReport === 0) && (productBreakdown && productBreakdown.length > 0) && (
+                                            <Typography variant="caption" color="text.secondary">(รายงานไม่มีต้นทุนเฉพาะ แสดงจาก product breakdown)</Typography>
+                                        )}
+                                    </Paper>
+                                    <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                        <Typography variant="h6" color="text.secondary">กำไรทั้งหมด</Typography>
+                                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: totalProfit >= 0 ? 'success.main' : 'error.main' }}>{totalProfit.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}</Typography>
+                                    </Paper>
+                                    <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                        <Typography variant="h6" color="text.secondary">ออเดอร์รวมทั้งหมด (สำเร็จ)</Typography>
+                                        <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{totalOrders.toLocaleString('th-TH')} รายการ</Typography>
+                                    </Paper>
+                                </Box>
+                                <Paper sx={{ p: 2 }}>
+                                    <Bar options={chartOptions} data={chartData} />
+                                </Paper>
+                            </>
+                        ) : (
+                            // ORDERS VIEW
+                            <Paper sx={{ p: 2 }}>
+                                <Typography variant="h6" sx={{ mb: 2 }}>รายชื่อออเดอร์ที่สำเร็จ</Typography>
+                                <Box sx={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>Order ID</th>
+                                                <th style={{ textAlign: 'left', padding: 8 }}>วันที่</th>
+                                                <th style={{ textAlign: 'right', padding: 8 }}>ยอดรวม (฿)</th>
+                                                <th style={{ textAlign: 'right', padding: 8 }}>จำนวนรายการ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {ordersList.map(o => (
+                                                <React.Fragment key={o.Order_ID}>
+                                                    <tr style={{ borderTop: '1px solid #eee' }}>
+                                                        <td style={{ padding: 8 }}>
+                                                            <button onClick={async () => {
+                                                                if (expandedOrderId === o.Order_ID) {
+                                                                    setExpandedOrderId(null);
+                                                                    return;
+                                                                }
+                                                                setExpandedOrderId(o.Order_ID);
+                                                                if (!orderDetailsMap[o.Order_ID]) {
+                                                                    try {
+                                                                        const token = localStorage.getItem('token');
+                                                                        const res = await axios.get(`${apiBase}/orders/${o.Order_ID}`, { headers: { Authorization: `Bearer ${token}` } });
+                                                                        setOrderDetailsMap(prev => ({ ...prev, [o.Order_ID]: res.data }));
+                                                                    } catch (err) {
+                                                                        console.error('Failed to load order details', err);
+                                                                    }
+                                                                }
+                                                            }} style={{ background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer' }}>{o.Order_ID}</button>
+                                                        </td>
+                                                        <td style={{ padding: 8 }}>{new Date(o.CreatedAt).toLocaleString()}</td>
+                                                        <td style={{ padding: 8, textAlign: 'right' }}>{formatTHB(o.TotalPrice || 0)}</td>
+                                                        <td style={{ padding: 8, textAlign: 'right' }}>{o.itemCount || 0}</td>
+                                                    </tr>
+                                                    {expandedOrderId === o.Order_ID && (
+                                                        <tr>
+                                                            <td colSpan={4} style={{ background: '#fafafa', padding: 8 }}>
+                                                                {orderDetailsMap[o.Order_ID] ? (
+                                                                    (() => {
+                                                                        const ord = orderDetailsMap[o.Order_ID];
+                                                                        const details = ord.details || [];
+                                                                        // helper to read unit price/cost from different API shapes
+                                                                        const getUnitPrice = (x) => Number(x.UnitPrice || x.Price || x.Unit_Price || x.unitPrice || 0);
+                                                                        const getUnitCost = (x) => Number(x.UnitCost || x.Cost || x.cost || x.Unit_Cost || x.UnitCost || 0);
+                                                                        const totalCostCalc = details.reduce((s, x) => s + (getUnitCost(x) * (Number(x.Quantity || 0))), 0);
+                                                                        const totalPriceCalc = Number(ord.TotalPrice || o.TotalPrice || details.reduce((s,x)=> s + (getUnitPrice(x) * Number(x.Quantity||0)),0) || 0);
+                                                                        const totalProfitCalc = totalPriceCalc - totalCostCalc;
+                                                                        return (
+                                                                            <div>
+                                                                                <div style={{ fontWeight: 'bold', marginBottom: 6 }}>รายละเอียดสินค้า</div>
+                                                                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                                                    <thead>
+                                                                                        <tr>
+                                                                                            <th style={{ textAlign: 'left', padding: 6 }}>สินค้า</th>
+                                                                                            <th style={{ textAlign: 'right', padding: 6 }}>ราคา/ตัว</th>
+                                                                                            <th style={{ textAlign: 'right', padding: 6 }}>ต้นทุน/ตัว</th>
+                                                                                            <th style={{ textAlign: 'right', padding: 6 }}>กำไร/ตัว</th>
+                                                                                            <th style={{ textAlign: 'right', padding: 6 }}>จำนวน</th>
+                                                                                            <th style={{ textAlign: 'right', padding: 6 }}>รวมราคาขาย</th>
+                                                                                            <th style={{ textAlign: 'right', padding: 6 }}>รวมต้นทุน</th>
+                                                                                            <th style={{ textAlign: 'right', padding: 6 }}>รวมกำไร</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        {details.map((d, i) => {
+                                                                                            const unitPrice = getUnitPrice(d);
+                                                                                            const UnitCost = getUnitCost(d);
+                                                                                            const qty = Number(d.Quantity || 0);
+                                                                                            const profitPer = unitPrice - UnitCost;
+                                                                                            const profitTotal = profitPer * qty;
+                                                                                            return (
+                                                                                                <tr key={i}>
+                                                                                                    <td style={{ padding: 6 }}>{d.ProductName} {d.color ? `(${d.color})` : ''} {d.size ? `/${d.size}` : ''}</td>
+                                                                                                    <td style={{ padding: 6, textAlign: 'right' }}>{formatTHB(unitPrice)}</td>
+                                                                                                    <td style={{ padding: 6, textAlign: 'right' }}>{formatTHB(UnitCost)}</td>
+                                                                                                    <td style={{ padding: 6, textAlign: 'right' }}>{formatTHB(profitPer)}</td>
+                                                                                                    <td style={{ padding: 6, textAlign: 'right' }}>{qty}</td>
+                                                                                                    <td style={{ padding: 6, textAlign: 'right' }}>{formatTHB(unitPrice * qty)}</td>
+                                                                                                    <td style={{ padding: 6, textAlign: 'right' }}>{formatTHB(UnitCost * qty)}</td>
+                                                                                                    <td style={{ padding: 6, textAlign: 'right' }}>{formatTHB(profitTotal)}</td>
+                                                                                                </tr>
+                                                                                            );
+                                                                                        })}
+                                                                                    </tbody>
+                                                                                </table>
+                                                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 24, marginTop: 12 }}>
+                                                                                    <div>ยอดรวมออเดอร์: <b>{formatTHB(totalPriceCalc)}</b></div>
+                                                                                    <div>ยอดรวมต้นทุน: <b>{formatTHB(totalCostCalc)}</b></div>
+                                                                                    <div>กำไร: <b style={{ color: totalProfitCalc >= 0 ? undefined : 'red' }}>{formatTHB(totalProfitCalc)}</b></div>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })()
+                                                                ) : (
+                                                                    <div>กำลังโหลดรายละเอียด...</div>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </Box>
                             </Paper>
-                            <Paper sx={{ p: 3, textAlign: 'center' }}>
-                                <Typography variant="h6" color="text.secondary">จำนวนออเดอร์ (ที่สำเร็จ)</Typography>
-                                <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{totalOrders.toLocaleString('th-TH')} รายการ</Typography>
-                            </Paper>
-                        </Box>
-                        <Paper sx={{ p: 2 }}>
-                            <Bar options={chartOptions} data={chartData} />
-                        </Paper>
+                        )}
                     </>
                 )}
             </Box>

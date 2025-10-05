@@ -5,6 +5,7 @@ import { Navigate, Outlet } from "react-router-dom"; // Import Outlet
 export default function ProtectedRoute({ allowedRoles }) { // รับ prop allowedRoles
   const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
+  
   let user = null;
 
   if (storedUser) {

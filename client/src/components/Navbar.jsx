@@ -2,11 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, ShoppingCart } from 'lucide-react';
+import axios from 'axios';
 
 export default function Navbar() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [anchorElUser, setAnchorElUser] = useState(false);
+    const [cartCount, setCartCount] = useState(0);
+    const [toast, setToast] = useState({ open: false, message: '' });
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -18,6 +21,35 @@ export default function Navbar() {
                 setUser(null);
             }
         }
+
+        const fetchCart = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await axios.get('http://localhost:5000/api/cart', { headers: { Authorization: `Bearer ${token}` } });
+                setCartCount((res.data || []).length);
+            } catch (e) {}
+        };
+
+        fetchCart();
+
+        const onCartUpdated = (e) => {
+            if (e?.detail?.count != null) setCartCount(e.detail.count);
+            else fetchCart();
+        };
+        const onToast = (ev) => {
+            const msg = ev?.detail?.message || '';
+            if (!msg) return;
+            setToast({ open: true, message: msg });
+            setTimeout(() => setToast({ open: false, message: '' }), 3000);
+        };
+
+        window.addEventListener('cartUpdated', onCartUpdated);
+        window.addEventListener('toast', onToast);
+        return () => {
+            window.removeEventListener('cartUpdated', onCartUpdated);
+            window.removeEventListener('toast', onToast);
+        };
     }, []);
 
    const handleLogout = () => {
@@ -61,7 +93,10 @@ export default function Navbar() {
                         // --- 2. สำหรับสมาชิกและแอดมิน (Logged In) ---
                         <>
                             <Link to="/cart" className="p-2 text-gray-700 hover:text-gray-900">
-                                <ShoppingCart className="w-6 h-6" />
+                                <div className="relative">
+                                    <ShoppingCart className="w-6 h-6" />
+                                    {/* removed red badge per user request */}
+                                </div>
                             </Link>
                             
                             <div className="relative">
@@ -99,7 +134,12 @@ export default function Navbar() {
                 </div>
             </nav>
         </header>
-        
+        {/* simple text toast (will show briefly when window dispatches 'toast') */}
+        {toast.open && (
+            <div className="fixed right-6 bottom-6 bg-black text-white px-4 py-2 rounded shadow-lg z-50">
+                {toast.message}
+            </div>
+        )}
         </>
     );
 }

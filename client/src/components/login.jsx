@@ -29,12 +29,12 @@ export default function Login() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  const apiBase = 'http://localhost:5000/api'; // ตรวจสอบให้ตรงกับพอร์ต Backend ของคุณ
+  const apiBase = 'http://localhost:5000/api'; 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    if (openSnackbar) { // ปิด Snackbar ถ้าผู้ใช้เริ่มพิมพ์ใหม่
+    if (openSnackbar) { 
       setOpenSnackbar(false);
     }
   };
@@ -86,7 +86,7 @@ export default function Login() {
       console.log('Login successful:', response.data);
 
       // ตรวจสอบ Role ของผู้ใช้เพื่อ Redirect
-      // *** แก้ไขตรงนี้: เปรียบเทียบ role เป็นตัวเลข (int) ***
+  
       if (user.role === 1) { // ถ้าเป็น Admin (role 1)
         navigate('/dashboard'); // พาไปหน้า Dashboard
       } else if (user.role === 0) { // ถ้าเป็นสมาชิกทั่วไป (role 0)
