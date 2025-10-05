@@ -170,7 +170,7 @@ export default function Home() {
                                         <div className="absolute top-full right-0 mt-1 w-48 bg-white border rounded-md shadow-lg z-50">
                                             <div className="py-1">
                                                 <Link to="/profile" onClick={handleMenuCloseUser} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ข้อมูลส่วนตัว</Link>
-                                                <Link to="/orders" onClick={handleMenuCloseUser} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ประวัติการสั่งซื้อ</Link>
+                                                <Link to="/my-orders" onClick={handleMenuCloseUser} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ประวัติการสั่งซื้อ</Link>
                                                 {user.role === 1 && (
                                                     <Link to="/dashboard" onClick={handleMenuCloseUser} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link>
                                                 )}

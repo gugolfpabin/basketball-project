@@ -33,8 +33,9 @@ export default function Navbar() {
 };
 
     return (
-        <header className="bg-white border-b border-gray-200 shadow-sm">
-            <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
+        <>
+        <header className="bg-white border-b  border-gray-200 shadow-sm">
+            <nav className="flex items-center justify-between  px-6 py-4 max-w-7xl mx-auto">
                 {/* ส่วนที่ 1: Logo หรือ Home */}
                 <div className="flex-1">
                     <Link to="/" className="text-xl font-bold text-gray-900 no-underline hover:text-blue-600">
@@ -78,7 +79,7 @@ export default function Navbar() {
                                             <Link to="/profile" onClick={() => setAnchorElUser(false)} className="block px-4 py-2 text-sm hover:bg-gray-100 no-underline text-gray-700">
                                                 ข้อมูลส่วนตัว
                                             </Link>
-                                            <Link to="/orders" onClick={() => setAnchorElUser(false)} className="block px-4 py-2 text-sm hover:bg-gray-100 no-underline text-gray-700">
+                                            <Link to="/my-orders" onClick={() => setAnchorElUser(false)} className="block px-4 py-2 text-sm hover:bg-gray-100 no-underline text-gray-700">
                                                 ประวัติการสั่งซื้อ
                                             </Link>
                                             {user.role === 1 && ( // แสดงเฉพาะ Admin
@@ -98,5 +99,7 @@ export default function Navbar() {
                 </div>
             </nav>
         </header>
+        
+        </>
     );
 }
