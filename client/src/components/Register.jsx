@@ -13,10 +13,13 @@ import {
   Typography,
   Alert,
   Snackbar,
+  InputAdornment,
 } from "@mui/material";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'; 
 import IconButton from '@mui/material/IconButton'; 
 import { useNavigate } from 'react-router-dom';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -41,8 +44,9 @@ export default function Register() {
   const [openSnackbar, setOpenSnackbar] = useState(false); // สถานะสำหรับควบคุม Snackbar
   const [snackbarMessage, setSnackbarMessage] = useState(""); // ข้อความใน Snackbar
   const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // ชนิดของ Snackbar (success, error, warning, info)
-
+  const [showPassword, setShowPassword] = useState(false);
   const apiBase = "http://localhost:5000/api";
+
 
   // โหลดจังหวัดเมื่อเปิดหน้า
   useEffect(() => {
@@ -109,6 +113,14 @@ export default function Register() {
     if (openSnackbar) {
       setOpenSnackbar(false);
     }
+  };
+
+  const handleClickShowPassword = () => {
+    setShowPassword((prev) => !prev);
+  };
+
+  const handleMouseDownPassword = (event) => {
+    event.preventDefault();
   };
 
   const showSnackbar = (message, severity) => {
@@ -291,22 +303,50 @@ export default function Register() {
 
           {/* Row 4: Password, Confirm Password */}
           <TextField
-            label="รหัสผ่าน"
-            name="password"
-            type="password"
-            value={form.password}
-            onChange={handleChange}
-            fullWidth
-            required
-          />
+                      label="รหัสผ่าน"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              aria-label="toggle password visibility"
+                              onClick={handleClickShowPassword}
+                              onMouseDown={handleMouseDownPassword}
+                              edge="end"
+                            >
+                              {showPassword ? <VisibilityOff /> : <Visibility />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
           <TextField
             label="ยืนยันรหัสผ่าน"
             name="confirmPassword"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={form.confirmPassword}
             onChange={handleChange}
             fullWidth
             required
+            InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              aria-label="toggle password visibility"
+                              onClick={handleClickShowPassword}
+                              onMouseDown={handleMouseDownPassword}
+                              edge="end"
+                            >
+                              {showPassword ? <VisibilityOff /> : <Visibility />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
           />
 
           {/* Row 5: Address */}

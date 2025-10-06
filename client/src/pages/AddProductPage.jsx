@@ -1,6 +1,6 @@
     // // //src/pages/AddProductPage.jsx
     import React, { useState, useEffect } from 'react';
-    import { useNavigate } from 'react-router-dom';
+    import { useParams, useNavigate, Link } from 'react-router-dom'
     import axios from 'axios';
     import {
         AppBar,
@@ -33,7 +33,7 @@
         Delete as DeleteIcon,
         Close as CloseIcon,
     } from '@mui/icons-material';
-
+ ;
     export default function AddProductPage() {
         const navigate = useNavigate();
         const apiBase = 'http://localhost:5000/api';
@@ -317,39 +317,12 @@ const handleSubmit = async (event) => {
 
         return (
             <Box sx={{ flexGrow: 1 }}>
-                <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid #e0e0e0' }}>
-                    <Toolbar>
-                        <IconButton onClick={() => navigate('/dashboard')} sx={{ mr: 2 }}>
-                            <ArrowBackIcon />
-                        </IconButton>
-                        <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-                            เพิ่มสินค้าใหม่
-                        </Typography>
-                        {user && (
-                            <>
-                                <Button
-                                    onClick={handleMenuClickUser}
-                                    color="inherit"
-                                    endIcon={<KeyboardArrowDownIcon />}
-                                    sx={{ textTransform: 'none', fontSize: '1rem' }}
-                                >
-                                    {user.email}
-                                </Button>
-                                <Menu
-                                    anchorEl={anchorElUser}
-                                    open={Boolean(anchorElUser)}
-                                    onClose={handleMenuCloseUser}
-                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                                >
-                                    <MenuItem onClick={handleLogout}>ออกจากระบบ</MenuItem>
-                                </Menu>
-                            </>
-                        )}
-                    </Toolbar>
-                </AppBar>
+                
 
                 <Container maxWidth="md" sx={{ py: 4 }}>
+                    <Button startIcon={<ArrowBackIcon />} component={Link} to="/dashboard" sx={{ mb: 2 }}>
+                        กลับหน้าหลัก
+                      </Button>
                     <Paper elevation={3} sx={{ p: 4, borderRadius: '8px' }}>
                         <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
                             รายละเอียดสินค้า

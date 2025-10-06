@@ -228,7 +228,7 @@ export default function ProfilePage() {
                         <Grid item xs={12} sm={6}>
                             <FormControl fullWidth required>
                                 <InputLabel>คำนำหน้า</InputLabel>
-                                <Select name="Title" value={formData.Title} label="คำนำหน้า" onChange={handleChange}>
+                                <Select name="Title" value={formData.Title} label="คำนำหน้า" onChange={handleChange} sx={{ minWidth: 100 }}>
                                     <MenuItem value="นาย">นาย</MenuItem>
                                     <MenuItem value="นางสาว">นางสาว</MenuItem>
                                     <MenuItem value="นาง">นาง</MenuItem>

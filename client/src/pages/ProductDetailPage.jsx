@@ -6,6 +6,8 @@ import axios from 'axios';
 import { ChevronDown, ShoppingCart, Loader } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
+
+
 export default function ProductDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -21,6 +23,11 @@ export default function ProductDetailPage() {
     const [user, setUser] = useState(null);
     const [anchorElUser, setAnchorElUser] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
+
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [modalMessage, setModalMessage] = useState('');
+
+
     const apiBase = 'http://localhost:5000/api';
 
     useEffect(() => {
@@ -117,6 +124,8 @@ export default function ProductDetailPage() {
         }
     };
     
+
+
     const handleAddToCart =  async () => {
         if (!user) {
         setShowLoginModal(true);
@@ -124,12 +133,16 @@ export default function ProductDetailPage() {
        }
 
        if (!selectedVariant) {
-       alert('กรุณาเลือกสีและขนาด');
+        setModalMessage('กรุณาเลือกสีและขนาด');
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 2000);
         return;
     }
     if (selectedVariant.stock <= 0) {
-      alert('สินค้าหมดสต็อก');
-      return;
+        setModalMessage('สินค้าหมดสต็อก');
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 2000);
+        return;
     }
     console.log('ตรวจสอบ object selectedVariant ทั้งหมด:', selectedVariant);
     console.log('ข้อมูลที่จะส่งไป Backend:', {
@@ -155,16 +168,18 @@ export default function ProductDetailPage() {
                     'Authorization': `Bearer ${token}` // ส่ง token ไปใน header
                 }
             }
-        );
+            
+        ); ;setTimeout(() => navigate('/cart'), 2000);
 
-        // ถ้าสำเร็จ แสดงข้อความจาก server
-        alert(response.data.message); 
-        // อนาคต: อาจจะอัปเดตตัวเลขบนไอคอนตะกร้าสินค้าตรง Navbar
+        setModalMessage(response.data.message || 'เพิ่มสินค้าลงตะกร้าสำเร็จ!');
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 2000);
 
     } catch (err) {
-        // ถ้าเกิดข้อผิดพลาด
-        const errorMessage = err.response?.data?.message || 'เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า';
-        alert(errorMessage);
+         const errorMessage = err.response?.data?.message || 'เกิดข้อผิดพลาด';
+            setModalMessage(errorMessage);
+            setShowSuccessModal(true);
+            setTimeout(() => setShowSuccessModal(false), 3000);
     }
   };
 
@@ -238,6 +253,19 @@ export default function ProductDetailPage() {
                     </div>
                 </div>
             )}
+
+            {showSuccessModal && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 transition-opacity duration-300">
+                <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 flex items-center gap-4 animate-fade-in-down">
+                    {/* ไอคอน Checkmark (SVG) */}
+                    <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p className="font-semibold text-gray-800">{modalMessage}</p>
+                </div>
+            </div>
+        )}
+
             
             <main className="max-w-7xl mx-auto px-4 py-8">
                 <div className="flex flex-col md:flex-row gap-8">
@@ -318,5 +346,8 @@ export default function ProductDetailPage() {
                 </div>
             </main>
         </div>
+
+
+
     );
 }

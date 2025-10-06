@@ -193,8 +193,6 @@ useEffect(() => {
 };
 
   // --- Edit & Delete Handlers ---
-  // const handleEdit = (productId, variantId) => 
-  //    navigate(`/admin/products/edit/${productId}/variant/${variantId}`);
  const handleManage = (productId) => {
     navigate(`/admin/products/manage/${productId}`);
   };
@@ -448,7 +446,7 @@ useEffect(() => {
         <DialogTitle>{"ยืนยันการลบสินค้า?"}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            คุณต้องการลบสินค้า "{itemToDelete?.productName}" (สี: {itemToDelete?.color}, ขนาด: {itemToDelete?.size}) ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้
+            คุณต้องการลบสินค้าใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้
           </DialogContentText>
         </DialogContent>
         <DialogActions>

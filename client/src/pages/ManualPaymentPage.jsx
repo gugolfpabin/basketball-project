@@ -143,7 +143,7 @@ export default function ManualPaymentPage() {
             setUploadMessage(response.data.message);
             setTimeout(() => {
                 navigate('/cart');
-            }, 1000);
+            }, 2000);
 
         } catch (err) {
             const errorMsg = err.response?.data?.message || 'อัปโหลดไม่สำเร็จ';
