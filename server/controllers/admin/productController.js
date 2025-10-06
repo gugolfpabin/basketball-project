@@ -1,6 +1,6 @@
     // server/controllers/productController.js
-    const db = require('../../db'); 
-    const categoryIdToNameMap = {
+const db = require('../../db');
+const categoryIdToNameMap = {
         1: 'เสื้อบาสเกตบอล',
         2: 'เสื้อ T-Shirt',
         3: 'กางเกงบาสเกตบอล',
@@ -8,62 +8,70 @@
         5: 'ถุงเท้า',
     };
     
+
 exports.getAllProducts = async (req, res) => {
     const categoryIdFilter = req.query.categoryId;
     const searchTerm = req.query.searchTerm;
     const view = req.query.view;
     let connection;
-
     // เตรียม map สำหรับ CategoryName เพื่อลดการ join ที่ไม่จำเป็นในบางกรณี
     const categoryIdToNameMap = {
         1: 'เสื้อบาสเกตบอล', 2: 'เสื้อ T-Shirt', 3: 'กางเกงบาสเกตบอล',
         4: 'รองเท้าบาสเกตบอล', 5: 'ถุงเท้า',
     };
-
+    
     try {
         connection = await db.getConnection();
-        const { categoryId, searchTerm } = req.query;
+        const { categoryId, searchTerm, view } = req.query;
         let sql;
         let params = [];
         let whereClause = [];
 
         if (view === 'admin') {
-            // --- ส่วนของ Admin Dashboard ---
+            // Query สำหรับหน้า Admin Dashboard (แสดงผลแบบ Product)
             sql = `
                 SELECT
-                    pv.Variant_ID, pv.Product_ID, p.ProductName, p.ProductDescription,
-                    p.Category_ID, c.CategoryName, pv.Size, pv.Color, pv.Stock,
-                    pv.Price, pv.Cost,
+                    p.Product_ID,
+                    p.ProductName,
+                    c.CategoryName,
+                    COUNT(pv.Variant_ID) AS variantCount,
                     (
                         SELECT pic.PictureURL
                         FROM picture pic
-                        WHERE pic.Variant_ID = pv.Variant_ID
-                        ORDER BY 
-                            CASE 
-                                WHEN pic.ImageType = 'front' THEN 1
-                                ELSE 2
-                            END
+                        WHERE pic.Product_ID = p.Product_ID
+                        ORDER BY pic.Picture_ID ASC
                         LIMIT 1
                     ) AS imageUrl
-                FROM product_variants pv
-                JOIN product p ON pv.Product_ID = p.Product_ID
+                FROM product p
                 LEFT JOIN category c ON p.Category_ID = c.Category_ID
+                LEFT JOIN product_variants pv ON p.Product_ID = pv.Product_ID
             `;
-            if (categoryIdFilter && categoryIdFilter !== '0' && categoryIdFilter !== 'all') {
+
+            if (categoryId && categoryId !== '0' && categoryId !== 'all') {
                 whereClause.push('p.Category_ID = ?');
-                params.push(parseInt(categoryIdFilter));
+                params.push(parseInt(categoryId));
             }
             if (searchTerm) {
-                const likeTerm = `%${searchTerm}%`;
-                whereClause.push(`(LOWER(p.ProductName) LIKE ? OR LOWER(c.CategoryName) LIKE ? OR LOWER(pv.Size) LIKE ? OR LOWER(pv.Color) LIKE ?)`);
-                params.push(likeTerm, likeTerm, likeTerm, likeTerm);
+                whereClause.push(`(LOWER(p.ProductName) LIKE ? OR LOWER(c.CategoryName) LIKE ?)`);
+                params.push(`%${searchTerm.toLowerCase()}%`, `%${searchTerm.toLowerCase()}%`);
             }
             if (whereClause.length > 0) sql += ' WHERE ' + whereClause.join(' AND ');
-            sql += ' ORDER BY pv.Product_ID ASC, pv.Variant_ID ASC';
+
+            sql += ' GROUP BY p.Product_ID, p.ProductName, c.CategoryName ORDER BY p.Product_ID ASC';
+
+            const [rows] = await connection.query(sql, params);
+            // แปลงข้อมูลให้ Frontend ใช้ง่าย
+            const products = rows.map(row => ({
+                id: row.Product_ID,
+                productName: row.ProductName,
+                category: row.CategoryName,
+                variantCount: row.variantCount,
+                imageUrl: row.imageUrl || 'https://placehold.co/70x70',
+            }));
+            return res.json(products);
 
         } else {
-            // --- ส่วนของหน้า Home (ปรับปรุงใหม่ทั้งหมด) ---
-            sql = `
+             sql = `
                 SELECT
                     p.Product_ID, p.ProductName, p.ProductDescription, p.Category_ID, c.CategoryName,
                     GROUP_CONCAT(DISTINCT pic.PictureURL ORDER BY pic.Picture_ID ASC SEPARATOR '|||') AS imageUrls_concat,
@@ -104,15 +112,17 @@ exports.getAllProducts = async (req, res) => {
 
         const [rows] = await connection.query(sql, params);
         
-        // --- ส่วนประมวลผล Response (เหมือนเดิม) ---
+        // --- ส่วนประมวลผล Response ---
         if (view === 'admin') {
-            const productVariants = rows.map(row => ({
-                id: row.Product_ID, variantId: row.Variant_ID, productName: row.ProductName,
-                categoryId: row.Category_ID, category: row.CategoryName, size: row.Size, color: row.Color, 
-                stock: row.Stock, price: row.Price, cost: row.Cost,
+            const products = rows.map(row => ({
+                id: row.Product_ID,
+                productName: row.ProductName,
+                categoryId: row.Category_ID,
+                category: row.CategoryName,
+                variantCount: row.variantCount, 
                 imageUrl: row.imageUrl || 'https://placehold.co/70x70',
             }));
-            res.json(productVariants);
+            res.json(products);
         } else {
             const products = rows.map(row => {
                 const imageUrls = row.imageUrls_concat ? row.imageUrls_concat.split('|||') : [];
@@ -129,85 +139,73 @@ exports.getAllProducts = async (req, res) => {
             });
             res.json(products);
         }
+
     } catch (error) {
-        console.error(`Error fetching products for view '${view}':`, error);
-        res.status(500).json({ message: `Error fetching products for view '${view}'`, error: error.message });
+        console.error('Error fetching all products:', error);
+        res.status(500).json({ message: 'Failed to fetch products.', error: error.message });
     } finally {
         if (connection) connection.release();
     }
 };
+
+
+
+
 exports.getOneProduct = async (req, res) => {
-    const { id: productId } = req.params; 
-
-    const sql = `
-        SELECT
-            p.Product_ID, p.ProductName, p.ProductDescription, p.Category_ID,
-            pv.Variant_ID, pv.Size, pv.Color, pv.Stock, pv.Price, pv.Cost,
-            pic.PictureURL, pic.ImageType, pic.Color as ImageColor
-        FROM product p
-        LEFT JOIN product_variants pv ON p.Product_ID = pv.Product_ID
-        LEFT JOIN picture pic ON pv.Variant_ID = pic.Variant_ID
-        WHERE p.Product_ID = ?
-        ORDER BY pv.Variant_ID ASC, pic.ImageType ASC;
-    `;
-
+    // (ใช้โค้ดชุดเดิมจากคำตอบก่อนหน้าได้เลย เพราะถูกต้องอยู่แล้ว)
+    // โค้ดนี้จะแยก Query รูปภาพกับ Variant ทำให้ข้อมูลแม่นยำ
+    const { id: productId } = req.params;
+    let connection;
     try {
-        const [rows] = await db.query(sql, [productId]);
-        if (rows.length === 0) {
-            const [productOnly] = await db.query('SELECT * FROM product WHERE Product_ID = ?', [productId]);
-            if (productOnly.length === 0) return res.status(404).json({ message: 'Product not found.' });
-            const p = productOnly[0];
-            return res.json({
-                id: p.Product_ID, name: p.ProductName, description: p.ProductDescription || '',
-                categoryId: p.Category_ID, variants: [],
-            });
-        }
+        connection = await db.getConnection();
+        const productSql = `
+            SELECT p.Product_ID, p.ProductName, p.ProductDescription, p.Category_ID,
+                   pv.Variant_ID, pv.Size, pv.Color, pv.Stock, pv.Price, pv.Cost
+            FROM product p
+            LEFT JOIN product_variants pv ON p.Product_ID = pv.Product_ID
+            WHERE p.Product_ID = ? ORDER BY pv.Variant_ID ASC;
+        `;
+        const [productRows] = await connection.query(productSql, [productId]);
 
+        if (productRows.length === 0 || !productRows[0].Product_ID) {
+            return res.status(404).json({ message: 'Product not found.' });
+        }
+        const imagesSql = `SELECT Variant_ID, PictureURL, ImageType FROM picture WHERE Product_ID = ?;`;
+        const [imageRows] = await connection.query(imagesSql, [productId]);
+        const imagesByVariant = imageRows.reduce((acc, img) => {
+            if (!acc[img.Variant_ID]) acc[img.Variant_ID] = [];
+            if (img.PictureURL) acc[img.Variant_ID].push({ PictureURL: img.PictureURL, ImageType: img.ImageType });
+            return acc;
+        }, {});
         const product = {
-            id: rows[0].Product_ID, name: rows[0].ProductName,
-            description: rows[0].ProductDescription || '', categoryId: rows[0].Category_ID,
+            id: productRows[0].Product_ID,
+            name: productRows[0].ProductName,
+            description: productRows[0].ProductDescription || '',
+            categoryId: productRows[0].Category_ID,
             variants: [],
         };
-
-        // จัดกลุ่มข้อมูลตาม variant
         const variantMap = new Map();
-        
-        rows.forEach(row => {
-            if (row.Variant_ID) {
-                if (!variantMap.has(row.Variant_ID)) {
-                    variantMap.set(row.Variant_ID, {
-                        variantId: row.Variant_ID, 
-                        size: row.Size, 
-                        color: row.Color,
-                        stock: row.Stock, 
-                        price: row.Price, 
-                        cost: row.Cost,
-                        images: []
-                    });
-                }
-                
-                // เพิ่มรูปภาพถ้ามี
-                if (row.PictureURL) {
-                    variantMap.get(row.Variant_ID).images.push({
-                        PictureURL: row.PictureURL,
-                        ImageType: row.ImageType || 'front',
-                        Color: row.ImageColor || row.Color
-                    });
-                }
+        productRows.forEach(row => {
+            if (row.Variant_ID && !variantMap.has(row.Variant_ID)) {
+                variantMap.set(row.Variant_ID, {
+                    variantId: row.Variant_ID,
+                    size: row.Size, color: row.Color, stock: row.Stock,
+                    price: row.Price, cost: row.Cost,
+                    images: imagesByVariant[row.Variant_ID] || []
+                });
             }
         });
-
-        // แปลง Map เป็น Array
         product.variants = Array.from(variantMap.values());
-        
         res.json(product);
     } catch (error) {
         console.error('Error fetching single product:', error);
         res.status(500).json({ message: 'Error fetching product details', error: error.message });
+    } finally {
+        if (connection) connection.release();
     }
 };
-    // --- createProduct: Add a new product with its variants and images ---
-    exports.createProduct = async (req, res) => {
+
+exports.createProduct = async (req, res) => {
         const { productName, productDescription, categoryId, variants } = req.body;
         let connection;
 
@@ -260,132 +258,52 @@ exports.getOneProduct = async (req, res) => {
             }
         }
     };
+    
 
-    // --- deleteProductVariant: Delete a specific product variant ---
-    exports.deleteProductVariant = async (req, res) => {
-        const { productId, variantId } = req.params; // Get product ID and variant ID from URL params
 
-        if (!variantId) {
-            return res.status(400).json({ message: 'Variant ID is required for deletion.' });
-        }
-
-        let connection;
-        try {
-            connection = await db.getConnection();
-            await connection.beginTransaction();
-
-            // ตรวจสอบว่ามีข้อมูลใน orderdetails หรือไม่
-            const [orderDetailsCheck] = await connection.query(
-                'SELECT COUNT(*) AS count FROM orderdetails WHERE Variant_ID = ?',
-                [variantId]
-            );
-
-            if (orderDetailsCheck[0].count > 0) {
-                await connection.rollback();
-                return res.status(400).json({ 
-                    message: 'ไม่สามารถลบสินค้านี้ได้ เนื่องจากมีข้อมูลการสั่งซื้อที่เกี่ยวข้อง กรุณาติดต่อผู้ดูแลระบบ' 
-                });
-            }
-
-            // ตรวจสอบว่ามีข้อมูลใน cartitem หรือไม่
-            const [cartItemCheck] = await connection.query(
-                'SELECT COUNT(*) AS count FROM cartitem WHERE Variant_ID = ?',
-                [variantId]
-            );
-
-            if (cartItemCheck[0].count > 0) {
-                await connection.rollback();
-                return res.status(400).json({ 
-                    message: 'ไม่สามารถลบสินค้านี้ได้ เนื่องจากมีข้อมูลในตะกร้าสินค้า กรุณาติดต่อผู้ดูแลระบบ' 
-                });
-            }
-
-            // ลบรูปภาพก่อน
-            await connection.query('DELETE FROM picture WHERE Variant_ID = ?', [variantId]);
-
-            // ลบ variant
-            const [result] = await connection.query(
-                'DELETE FROM product_variants WHERE Variant_ID = ? AND Product_ID = ?',
-                [variantId, productId]
-            );
-
-            if (result.affectedRows === 0) {
-                await connection.rollback();
-                return res.status(404).json({ message: 'Product variant not found or already deleted.' });
-            }
-
-            // ตรวจสอบว่ายังมี variant อื่นๆ หรือไม่
-            const [remainingVariants] = await connection.query(
-                'SELECT COUNT(*) AS count FROM product_variants WHERE Product_ID = ?',
-                [productId]
-            );
-
-            // ถ้าไม่มี variant เหลือแล้ว ให้ลบ product และรูปภาพทั้งหมด
-            if (remainingVariants[0].count === 0) {
-                await connection.query('DELETE FROM picture WHERE Product_ID = ?', [productId]);
-                await connection.query('DELETE FROM product WHERE Product_ID = ?', [productId]);
-                console.log(`Product ${productId} and its pictures deleted as no variants remained.`);
-            }
-
-            await connection.commit();
-            res.status(200).json({ message: 'Product variant deleted successfully!' });
-
-        } catch (error) {
-            if (connection) {
-                await connection.rollback();
-            }
-            console.error('Error deleting product variant:', error);
-            res.status(500).json({ message: 'Failed to delete product variant.', error: error.message });
-        } finally {
-            if (connection) {
-                connection.release();
-            }
-        }
-    };
-
-    // --- updateProduct ---
 exports.updateProduct = async (req, res) => {
     const { productId } = req.params; 
-    const { productName, productDescription, categoryId, variants } = req.body;
+    const { name, description, categoryId, variants } = req.body;
+    let connection;
 
-    // ตรวจสอบว่าได้รับ productId มาถูกต้องหรือไม่
     if (!productId) {
-        return res.status(400).json({ message: 'Product ID is missing from the request URL.' });
+        return res.status(400).json({ message: 'Product ID is required.' });
     }
 
-    let connection;
     try {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 1. อัปเดตข้อมูลหลักของสินค้า (product table)
         await connection.query(
-            `UPDATE product SET ProductName = ?, ProductDescription = ?, Category_ID = ? WHERE Product_ID = ?`,
-            [productName, productDescription, categoryId, productId]
+            'UPDATE product SET ProductName = ?, ProductDescription = ?, Category_ID = ? WHERE Product_ID = ?',
+            [name, description, categoryId, productId]
         );
 
-        // 2. จัดการกับ Variants (ใช้ for...of loop เพื่อให้ await ทำงานถูกต้องตามลำดับ)
         if (variants && Array.isArray(variants)) {
             for (const variant of variants) {
-                // 2.1 อัปเดตข้อมูลหลักของ variant (product_variants table)
-                await connection.query(
-                    `UPDATE product_variants SET Size = ?, Color = ?, Stock = ?, Price = ?, Cost = ? WHERE Variant_ID = ? AND Product_ID = ?`,
-                    [variant.size, variant.color, variant.stock, variant.price, variant.cost, variant.variantId, productId]
-                );
+                let currentVariantId = variant.variantId;
 
-                // 2.2 [สำคัญ] ตรรกะ UPSERT สำหรับรูปภาพ (picture table)
-                await connection.query(
-                    'DELETE FROM picture WHERE Variant_ID = ?', 
-                    [variant.variantId]
-                );
+                if (currentVariantId && currentVariantId !== 'new') {
+                    await connection.query(
+                        'UPDATE product_variants SET Size = ?, Color = ?, Stock = ?, Price = ?, Cost = ? WHERE Variant_ID = ?',
+                        [variant.size, variant.color, variant.stock, variant.price, variant.cost, currentVariantId]
+                    );
+                    await connection.query('DELETE FROM picture WHERE Variant_ID = ?', [currentVariantId]);
+                } else {
+                    const [result] = await connection.query(
+                        'INSERT INTO product_variants (Product_ID, Size, Color, Stock, Price, Cost) VALUES (?, ?, ?, ?, ?, ?)',
+                        [productId, variant.size, variant.color, variant.stock, variant.price, variant.cost]
+                    );
+                    currentVariantId = result.insertId;
+                }
 
-                    // ถ้า UPDATE ไม่สำเร็จ (ไม่เจอแถวข้อมูลเดิม) ให้ INSERT เป็นข้อมูลใหม่แทน
-                    if (variant.images && Array.isArray(variant.images)) {
+                if (variant.images && Array.isArray(variant.images)) {
                     for (const image of variant.images) {
-                        if (image.url && image.type) { 
+                        // [สำคัญ] ใช้ Key "PictureURL" และ "ImageType" ให้ตรงกับที่ Frontend ส่งมา
+                        if (image.PictureURL && image.ImageType) {
                             await connection.query(
                                 'INSERT INTO picture (Product_ID, Variant_ID, PictureURL, ImageType, Color) VALUES (?, ?, ?, ?, ?)',
-                                [productId, variant.variantId, image.url, image.type, variant.color]
+                                [productId, currentVariantId, image.PictureURL, image.ImageType, variant.color]
                             );
                         }
                     }
@@ -397,14 +315,86 @@ exports.updateProduct = async (req, res) => {
         res.status(200).json({ message: 'Product updated successfully!', productId });
 
     } catch (error) {
-        if (connection) {
-            await connection.rollback();
-        }
+        if (connection) await connection.rollback();
         console.error('Error updating product:', error);
         res.status(500).json({ message: 'Failed to update product.', error: error.message });
     } finally {
-        if (connection) {
-            connection.release();
+        if (connection) connection.release();
+    }
+};
+
+exports.deleteVariant = async (req, res) => {
+    const { variantId } = req.params;
+    let connection;
+
+    if (!variantId) {
+        return res.status(400).json({ message: 'Variant ID is required.' });
+    }
+
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        await connection.query('DELETE FROM picture WHERE Variant_ID = ?', [variantId]);
+        const [result] = await connection.query('DELETE FROM product_variants WHERE Variant_ID = ?', [variantId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Variant not found.' });
         }
+
+        await connection.commit();
+        res.status(200).json({ message: 'Variant deleted successfully.' });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error deleting variant:', error);
+        res.status(500).json({ message: 'Failed to delete variant.', error: error.message });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+exports.deleteProduct = async (req, res) => {
+    const { productId } = req.params;
+    let connection;
+
+    if (!productId) {
+        return res.status(400).json({ message: 'Product ID is required.' });
+    }
+
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // 1. ดึง Variant IDs ทั้งหมดที่อยู่ใต้ Product นี้
+        const [variants] = await connection.query(
+            'SELECT Variant_ID FROM product_variants WHERE Product_ID = ?', 
+            [productId]
+        );
+        const variantIds = variants.map(v => v.Variant_ID);
+
+        // 2. ถ้ามี Variants, ให้ลบรูปภาพทั้งหมดที่เกี่ยวข้องกับ Variants เหล่านั้น
+        if (variantIds.length > 0) {
+            await connection.query('DELETE FROM picture WHERE Variant_ID IN (?)', [variantIds]);
+        }
+
+        // 3. ลบ Variants ทั้งหมด
+        await connection.query('DELETE FROM product_variants WHERE Product_ID = ?', [productId]);
+
+        // 4. ลบ Product หลัก
+        const [result] = await connection.query('DELETE FROM product WHERE Product_ID = ?', [productId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Product not found.' });
+        }
+
+        await connection.commit();
+        res.status(200).json({ message: 'Product deleted successfully.' });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error deleting product:', error);
+        res.status(500).json({ message: 'Failed to delete product.', error: error.message });
+    } finally {
+        if (connection) connection.release();
     }
 };

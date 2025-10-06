@@ -387,7 +387,7 @@ const handleSubmit = async (event) => {
                                         label="คำอธิบายสินค้า"
                                         value={productDescription}
                                         onChange={(e) => setProductDescription(e.target.value)}
-                                        sx={{ minWidth: 339 }}
+                                        sx={{ minWidth: 338 }}
                                         multiline
                                         rows={4}
                                     />

@@ -2,7 +2,7 @@
 const db = require('../db');  
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'your_jwt_secret'; // ควรเก็บใน .env
+const JWT_SECRET = 'your_jwt_secret'; 
 
 
 ///Register ///

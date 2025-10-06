@@ -20,7 +20,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import th from 'date-fns/locale/th';
 import AdminReportPage from './pages/AdminReportPage';
-
+import ManageVariantsPage from './pages/ManageVariantsPage';
 
 function App() {
   return (
@@ -44,11 +44,13 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={['1']} />}>
           <Route path="/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/products/add" element={<AddProductPage />} />
-          <Route path="/admin/products/edit/:id/variant/:variantId" element={<EditProductPage />} />
+          
           <Route path="/admin/orders" element={<AdminOrderListPage />} />
           <Route path="/admin/order/:orderId" element={<AdminOrderDetailPage />} />
           <Route path="/admin/reports" element={<AdminReportPage />} />
-
+          
+          <Route path="/admin/products/manage/:id" element={<ManageVariantsPage />} />
+          <Route path="/admin/products/edit/:id/variant/:variantId" element={<EditProductPage />} />
         </Route>
        
         

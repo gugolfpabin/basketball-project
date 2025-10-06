@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Settings as SettingsIcon } from '@mui/icons-material';
 import {
   AppBar,
   Toolbar,
@@ -67,6 +68,7 @@ export default function AdminDashboardPage() {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [errorProducts, setErrorProducts] = useState(null);
+  const [productToDelete, setProductToDelete] = useState(null);
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -74,7 +76,7 @@ export default function AdminDashboardPage() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const apiBase = 'http://localhost:5000/api';
   const itemsPerPage = 20;
 
@@ -155,6 +157,12 @@ useEffect(() => {
     }
   }, [navigate]);
 
+   
+
+  const handleSnackbarClose = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1); // Reset to first page when search changes
@@ -185,42 +193,35 @@ useEffect(() => {
 };
 
   // --- Edit & Delete Handlers ---
-  const handleEdit = (productId, variantId) => 
-     navigate(`/admin/products/edit/${productId}/variant/${variantId}`);
+  // const handleEdit = (productId, variantId) => 
+  //    navigate(`/admin/products/edit/${productId}/variant/${variantId}`);
+ const handleManage = (productId) => {
+    navigate(`/admin/products/manage/${productId}`);
+  };
 
-
-  const handleDeleteClick = (item) => {
-    setItemToDelete(item);
+   const handleDeleteClick = (product) => {
+    setProductToDelete(product);
     setOpenDeleteDialog(true);
   };
 
   const handleDeleteConfirm = async () => {
-    setOpenDeleteDialog(false);
-    if (!itemToDelete) return;
+    if (!productToDelete) return;
     try {
-      await axios.delete(`${apiBase}/products/${itemToDelete.id}/variants/${itemToDelete.variantId}`);
-      setSnackbarMessage('ลบสินค้าสำเร็จ!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      fetchProducts();
+      await axios.delete(`${apiBase}/products/${productToDelete.id}`);
+      setSnackbar({ open: true, message: 'ลบสินค้าสำเร็จ!', severity: 'success' });
+      fetchProducts(); 
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message;
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+      setSnackbar({ open: true, message: 'เกิดข้อผิดพลาดในการลบสินค้า', severity: 'error' });
     } finally {
-      setItemToDelete(null);
+      handleDeleteCancel();
     }
   };
+
   const handleDeleteCancel = () => {
     setOpenDeleteDialog(false);
-    setItemToDelete(null);
+    setProductToDelete(null);
   };
 
-  const handleSnackbarClose = (event, reason) => {
-    if (reason === 'clickaway') return;
-    setSnackbarOpen(false);
-  };
 
   // --- Pagination Handlers ---
   const handlePageChange = (event, page) => {
@@ -372,42 +373,50 @@ useEffect(() => {
         <TableContainer component={Paper} elevation={3} sx={{ borderRadius: '8px' }}>
           <Table sx={{ minWidth: 650 }}>
             <TableHead>
+              {/*  Table Header */}
               <TableRow sx={{ bgcolor: 'grey.100' }}>
                 <TableCell sx={{ fontWeight: 'bold', width: '10%' }}>สินค้า</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '25%' }}>ชื่อสินค้า</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '10%' }}>สี</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '10%' }}>ขนาด</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '10%' }}>ราคา</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>จำนวนคงเหลือ</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '20%', textAlign: 'center' }}>การดำเนินการ</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '40%' }}>ชื่อสินค้า</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '20%' }}>หมวดหมู่</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>จำนวน Variants</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '15%', textAlign: 'center' }}>การดำเนินการ</TableCell>
               </TableRow>
             </TableHead>
+
+
             <TableBody>
               {displayedProducts.length > 0 ? (
                 displayedProducts.map((item) => (
-                  <TableRow key={item.variantId}>
+                  <TableRow key={item.id}>
                     <TableCell><Avatar src={item.imageUrl} variant="rounded" sx={{ width: 70, height: 70 }} /></TableCell>
                     <TableCell>{item.productName}</TableCell>
-                    <TableCell>{item.color}</TableCell>
-                    <TableCell>{item.size}</TableCell>
-                    <TableCell>{item.price} THB</TableCell>
-                    <TableCell>{item.stock}</TableCell>
+                    <TableCell>{item.category}</TableCell>
+                    <TableCell>{item.variantCount} รายการ</TableCell>
                     <TableCell sx={{ textAlign: 'center' }}>
-                       <Button 
-                                                variant="contained" 
-                                                color="warning" 
-                                                size="small" 
-                                                startIcon={<EditIcon />} 
-                                                onClick={() => handleEdit(item.id, item.variantId)} 
-                                                sx={{ mr: 1, textTransform: 'none', borderRadius: '20px', px: 2 }}>แก้ไข
-                                            </Button>
-                      <Button variant="contained" color="error" size="small" startIcon={<DeleteIcon />} onClick={() => handleDeleteClick(item)} sx={{ textTransform: 'none', borderRadius: '20px', px: 2 }}>ลบ</Button>
+                       <Button
+                        variant="contained"
+                        onClick={() => navigate(`/admin/products/manage/${item.id}`)}
+                        sx={{ mr: 1 }}
+                      >
+                        จัดการ
+                      </Button>
+                      {/* ปุ่มลบสินค้า */}
+                  <Button 
+                    variant="outlined" 
+                    color="error" 
+                    size="small" 
+                    startIcon={<DeleteIcon />}
+                    onClick={() => handleDeleteClick(item)}
+                  >
+                    ลบ
+                  </Button>
+
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}> 
                     <Typography variant="h6" color="text.secondary">ไม่พบสินค้า</Typography>
                   </TableCell>
                 </TableRow>
@@ -435,7 +444,7 @@ useEffect(() => {
       </Box>
 
       {/* Delete Dialog */}
-      <Dialog open={openDeleteDialog} onClose={handleDeleteCancel}>
+      { <Dialog open={openDeleteDialog} onClose={handleDeleteCancel}>
         <DialogTitle>{"ยืนยันการลบสินค้า?"}</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -446,19 +455,20 @@ useEffect(() => {
           <Button onClick={handleDeleteCancel} color="primary">ยกเลิก</Button>
           <Button onClick={handleDeleteConfirm} color="error" autoFocus>ลบ</Button>
         </DialogActions>
-      </Dialog>
+      </Dialog> }
 
       {/* Snackbar for notifications */}
       <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      open={snackbar.open}
+      autoHideDuration={6000}
+      onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
         </Alert>
       </Snackbar>
+
     </Box>
   );
 }
