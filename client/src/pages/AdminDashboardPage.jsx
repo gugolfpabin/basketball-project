@@ -93,7 +93,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const handler = setTimeout(() => {
         setDebouncedSearchTerm(searchTerm);
-    }, 500);
+    }, 700);
 
     return () => {
         clearTimeout(handler);

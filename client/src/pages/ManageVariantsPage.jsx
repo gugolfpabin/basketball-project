@@ -5,8 +5,10 @@ import {
   Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Avatar, Dialog, DialogActions, DialogContent,
   DialogContentText, DialogTitle, CircularProgress, Snackbar, Alert, Container,
-  TextField, // [เพิ่ม] Import TextField สำหรับฟอร์มแก้ไข
+  TextField,MenuItem,
 } from '@mui/material';
+
+
 import { 
   Edit as EditIcon, 
   Delete as DeleteIcon, 
@@ -14,6 +16,14 @@ import {
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon // [เพิ่ม] Import SaveIcon
 } from '@mui/icons-material';
+
+const categories = [
+    { id: 1, name: 'เสื้อบาสเกตบอล' },
+    { id: 2, name: 'เสื้อ T-Shirt' },
+    { id: 3, name: 'กางเกงบาสเกตบอล' },
+    { id: 4, name: 'รองเท้าบาสเกตบอล' },
+    { id: 5, name: 'ถุงเท้า' },
+];
 
 export default function ManageVariantsPage() {
   const { id: productId } = useParams(); // เปลี่ยนชื่อ id เป็น productId เพื่อความชัดเจน
@@ -185,6 +195,7 @@ export default function ManageVariantsPage() {
           <Button onClick={handleDeleteConfirm} color="error">ลบ</Button>
          </DialogActions>
       </Dialog>
+
        <Snackbar
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         open={snackbar.open}
@@ -226,16 +237,24 @@ export default function ManageVariantsPage() {
             onChange={handleProductEditChange}
             sx={{ mb: 2 }}
           />
-          <TextField
+           <TextField
+            select 
             margin="dense"
             name="categoryId"
-            label="ประเภทสินค้า (ID)"
-            type="number"
+            label="ประเภทสินค้า"
             fullWidth
             variant="outlined"
             value={productToEdit.categoryId}
             onChange={handleProductEditChange}
-          />
+          >
+            {/* วนลูปเพื่อสร้างตัวเลือก Dropdown */}
+            {categories.map((option) => (
+              <MenuItem key={option.id} value={option.id}>
+                {option.name}
+              </MenuItem>
+            ))}
+          </TextField>
+
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseEditProductDialog}>ยกเลิก</Button>

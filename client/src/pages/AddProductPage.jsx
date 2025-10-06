@@ -68,7 +68,7 @@
         ];
         
         // กำหนดขนาดมาตรฐาน
-        const standardSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
+        const standardSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL','3XL', 'US M 7 / W 8.5','US M 7.5 / W 9', 'US M 8 / W 9.5', 'US M 8.5 / W 10', 'US M 9 / W 10.5', 'US M 9.5 / W 11', 'US M 10 / W 11.5', 'US M 10.5 / W 12', 'US M 11 / W 12.5', 'US M 11.5 / W 13', 'US M 12 / W 13.5', 'US M 12.5 / W 14', 'US M 13 / W 14.5',];
 
         // --- Navbar states ---
         const [user, setUser] = useState(null);
@@ -450,7 +450,7 @@ const handleSubmit = async (event) => {
                                                     </Grid>
                                                     
                                                     <Grid item xs={12}>
-                                                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'medium' }}>เลือกขนาดและใส่สต็อก:</Typography>
+                                                        <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>เลือกขนาดและใส่สต็อก: US สำหรับรองเท้า </Typography>
                                                         <Grid container spacing={2}>
                                                             {standardSizes.map(size => {
                                                                 const isChecked = colorVariant.sizes.some(s => s.name === size);
@@ -489,7 +489,7 @@ const handleSubmit = async (event) => {
                                                     </Grid>
 
                                                     <Grid item xs={12}>
-                                                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'medium' }}>รูปภาพสำหรับสีนี้:</Typography>
+                                                        <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>รูปภาพสำหรับสีนี้:</Typography>
                                                         
                                                         {/* รูปหน้า */}
                                                         <Box sx={{ mb: 2 }}>
