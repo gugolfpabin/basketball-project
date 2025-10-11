@@ -1,4 +1,3 @@
-// server/controllers/orderController.js
 const db = require('../../db');
 
 
@@ -110,9 +109,7 @@ exports.updateOrderStatus = async (req, res) => {
             return res.status(404).json({ message: 'ไม่พบออเดอร์' });
         }
         const oldStatus = orders[0].Status;
-
-
-        // ถ้าสถานะเดิม "ยังไม่ถูกยกเลิก" และสถานะใหม่ "คือยกเลิก"
+     
         if (oldStatus !== 'cancelled' && newStatus === 'cancelled') {
             const [orderDetails] = await connection.query('SELECT * FROM `orderdetails` WHERE Order_ID = ?', [orderId]);
             for (const item of orderDetails) {
@@ -122,8 +119,6 @@ exports.updateOrderStatus = async (req, res) => {
                 );
             }
         }
-
-        // อัปเดตสถานะและหมายเหตุ
         await connection.query(
             'UPDATE `orders` SET Status = ?, AdminNotes = ? WHERE Order_ID = ?',
             [newStatus, adminNotes, orderId]

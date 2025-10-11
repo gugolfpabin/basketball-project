@@ -1,8 +1,6 @@
-// controllers/cartController.js
 const db = require('../db');
 
 exports.addToCart = async (req, res) => {
-    // memberId ได้มาจาก middleware verifyToken ที่ถอดรหัส token
     const memberId = req.user.id; 
     const { variantId, quantity } = req.body;
 
@@ -10,11 +8,10 @@ exports.addToCart = async (req, res) => {
         return res.status(400).json({ message: 'ข้อมูลไม่ครบถ้วน' });
     }
 
-    const connection = await db.getConnection(); // เริ่ม transaction
+    const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
 
-        // 1. ค้นหาข้อมูล variant เพื่อเอา ราคา และ สต็อก มาเช็ค
         const [variants] = await connection.query('SELECT Price, Stock FROM product_variants WHERE Variant_ID = ?', [variantId]);
         
         if (variants.length === 0) {
@@ -29,43 +26,37 @@ exports.addToCart = async (req, res) => {
         }
         const unitPrice = variant.Price;
 
-        // 2. หาตะกร้า (Cart) ของผู้ใช้คนนี้ ถ้าไม่มีให้สร้างใหม่
         let [carts] = await connection.query('SELECT Cart_ID FROM cart WHERE Member_ID = ?', [memberId]);
         let cartId;
 
         if (carts.length === 0) {
-            // ถ้าไม่มีตะกร้า ให้สร้างใหม่
             const [newCart] = await connection.query('INSERT INTO cart (Member_ID, Created_Date) VALUES (?, NOW())', [memberId]);
             cartId = newCart.insertId;
         } else {
-            // ถ้ามีอยู่แล้ว ก็ใช้ ID เดิม
             cartId = carts[0].Cart_ID;
         }
 
-        // 3. เช็คว่าสินค้านี้ (variantId) มีอยู่ในตะกร้า (cartId) แล้วหรือยัง
         const [items] = await connection.query('SELECT CartItem_ID, Quantity FROM cartitem WHERE Cart_ID = ? AND Variant_ID = ?', [cartId, variantId]);
 
         if (items.length > 0) {
-            // ถ้ามีแล้ว ให้อัปเดต Quantity
             const newQuantity = items[0].Quantity + quantity;
             await connection.query('UPDATE cartitem SET Quantity = ? WHERE CartItem_ID = ?', [newQuantity, items[0].CartItem_ID]);
         } else {
-            // ถ้ายังไม่มี ให้เพิ่มเข้าไปใหม่ (INSERT)
             await connection.query(
                 'INSERT INTO cartitem (Cart_ID, Variant_ID, Quantity, UnitPrice) VALUES (?, ?, ?, ?)',
                 [cartId, variantId, quantity, unitPrice]
             );
         }
 
-        await connection.commit(); // ยืนยัน Transaction
+        await connection.commit();
         res.status(200).json({ message: 'เพิ่มสินค้าลงในตะกร้าสำเร็จ!' });
 
     } catch (error) {
-        await connection.rollback(); // ถ้ามีปัญหา ให้ย้อนกลับทั้งหมด
+        await connection.rollback();
         console.error('Add to cart error:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' });
     } finally {
-        connection.release(); // คืน connection
+        connection.release();
     }
 };
 
@@ -108,14 +99,13 @@ exports.getCart = async (req, res) => {
 };
 
 exports.validateStock = async (req, res) => {
-    const { items } = req.body; // รับ Array ของ items จาก Frontend
+    const { items } = req.body;
 
     if (!items || items.length === 0) {
         return res.status(400).json({ message: "ไม่มีสินค้าในตะกร้า" });
     }
 
     try {
-        // วนลูปเช็คสต็อกสินค้าแต่ละตัว
         for (const item of items) {
             const [rows] = await db.query(
                 'SELECT Stock, p.ProductName FROM product_variants pv JOIN product p ON pv.Product_ID = p.Product_ID WHERE pv.Variant_ID = ?', 
@@ -130,7 +120,6 @@ exports.validateStock = async (req, res) => {
             const productName = rows[0].ProductName;
 
             if (item.quantity > stockAvailable) {
-                // ถ้าจำนวนที่ต้องการ > สต็อกที่มี ให้ส่ง Error กลับไปทันที
                 return res.status(400).json({ 
                     success: false,
                     message: `ขออภัย, สินค้า "${productName}" (สี: ${item.color}, ขนาด: ${item.size}) มีเหลือเพียง ${stockAvailable} ชิ้น` 
@@ -138,8 +127,6 @@ exports.validateStock = async (req, res) => {
             }
         }
 
-        // ถ้าวนลูปจนจบแล้วไม่มีปัญหา
-        // หมายความว่าสินค้าทุกชิ้นมีพอ
         res.status(200).json({ success: true, message: "สต็อกสินค้าเพียงพอ" });
 
     } catch (error) {

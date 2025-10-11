@@ -53,11 +53,9 @@ export default function ManualPaymentPage() {
     const [uploadMessage, setUploadMessage] = useState('');
     const [isUploading, setIsUploading] = useState(false);
 
-    // Address / profile state (we'll reuse similar fields as ProfilePage)
     const [address, setAddress] = useState(null);
     const [loadingAddress, setLoadingAddress] = useState(true);
 
-    // Edit popup state (form mirrors ProfilePage fields)
     const [showEdit, setShowEdit] = useState(false);
     const [editData, setEditData] = useState({
         Title: '',
@@ -81,11 +79,9 @@ export default function ManualPaymentPage() {
     const apiBase = 'http://localhost:5000/api';
 
     useEffect(() => {
-        // Fetch profile/address. If no token, fallback to sample data provided by user.
         const fetchAddress = async () => {
             const token = localStorage.getItem('token');
             if (!token) {
-                // fallback sample data as requested
                 setAddress({
                     Title: 'นาย',
                     FirstName: 'test',
@@ -113,7 +109,6 @@ export default function ManualPaymentPage() {
             }
         };
         fetchAddress();
-        // also load provinces for the edit popup
         axios.get(`${apiBase}/provinces`).then(r => setProvinces(r.data)).catch(() => {});
     }, []);
 
@@ -182,7 +177,6 @@ export default function ManualPaymentPage() {
         }
     }, [qrCodeImage, navigate]);
 
-    // --- Edit popup logic ---
     const openEdit = () => {
         setEditError('');
         setEditSuccess('');
@@ -240,7 +234,6 @@ export default function ManualPaymentPage() {
         try {
             const token = localStorage.getItem('token');
             if (!token) {
-                // for local/demo mode just update UI
                 setAddress(editData);
                 setEditSuccess('บันทึกสำเร็จ (ท้องถิ่น)');
                 setShowEdit(false);

@@ -165,7 +165,7 @@ useEffect(() => {
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when search changes
+    setCurrentPage(1);
   };
 
   // --- Drawer & Category Handlers ---
@@ -376,7 +376,7 @@ useEffect(() => {
                 <TableCell sx={{ fontWeight: 'bold', width: '10%' }}>สินค้า</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', width: '40%' }}>ชื่อสินค้า</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', width: '20%' }}>หมวดหมู่</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>จำนวน Variants</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', width: '15%' }}>จำนวน รายละเอียด</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', width: '15%', textAlign: 'center' }}>การดำเนินการ</TableCell>
               </TableRow>
             </TableHead>

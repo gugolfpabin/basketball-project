@@ -1,11 +1,9 @@
-//server\controllers\authController.js
 const db = require('../db');  
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = 'your_jwt_secret'; 
 
 
-///Register ///
 exports.registerUser = async (req, res) => {
   const {
     Title, FirstName, LastName, Phone,
@@ -18,7 +16,7 @@ exports.registerUser = async (req, res) => {
   }
 
   try {
-    // 1. เช็คว่า Email ซ้ำไหม
+    // เช็คว่า Email ซ้ำไหม
     const [existingUsers] = await db.query(
       'SELECT * FROM member WHERE Email = ?', 
       [Email]
@@ -28,10 +26,10 @@ exports.registerUser = async (req, res) => {
       return res.status(409).json({ message: 'อีเมลนี้ถูกใช้งานแล้ว' });
     }   
 
-    // 2. เข้ารหัสรหัสผ่าน
+    // เข้ารหัสรหัสผ่าน
     const hashedPassword = await bcrypt.hash(Password, 10);
 
-    // 3. บันทึกข้อมูล
+    // บันทึกข้อมูล
     await db.query(
       `INSERT INTO member 
        (Title, FirstName, LastName, Phone, Email, Password, Address, Province_ID, District_ID, Subdistrict_ID, PostalCode) 
@@ -64,7 +62,6 @@ exports.loginUser = async (req, res) => {
         return res.status(400).json({ message: 'กรุณากรอกอีเมลและรหัสผ่าน' });
     }
     try {
-        // [ถูกต้อง] ดึงข้อมูลจากตาราง member
         const [users] = await db.query('SELECT * FROM member WHERE Email = ?', [Email]);
         if (users.length === 0) {
             return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
@@ -81,7 +78,6 @@ exports.loginUser = async (req, res) => {
             { expiresIn: '1h' }
         );
         
-        // Log เพื่อตรวจสอบค่า JWT_SECRET ที่ใช้
         console.log('[Login Function] JWT_SECRET used to SIGN:', process.env.JWT_SECRET);
 
         res.json({
@@ -103,11 +99,8 @@ exports.loginUser = async (req, res) => {
 
 exports.getUserProfile = async (req, res) => {
        try {
-           // ใช้ req.user.id ที่ได้มาจาก authMiddleware (ซึ่งก็คือ Member_ID)
           const [rows] = await db.query(
-            // v--- เปลี่ยนชื่อตารางเป็น 'member'
           'SELECT Member_ID, Title, FirstName, LastName, Phone, Email, Address, Province_ID, District_ID, Subdistrict_ID, PostalCode, Role FROM member WHERE Member_ID = ?', 
-            //                                                                                                                       ^--- เปลี่ยนชื่อคอลัมน์เป็น 'Member_ID'
            [req.user.id]
         );
 
@@ -123,7 +116,6 @@ exports.getUserProfile = async (req, res) => {
 
 
 exports.updateUserProfile = async (req, res) => {
-    // รับค่าทั้งหมดที่ส่งมาจากฟอร์ม Frontend
     const {
         Title,
         FirstName,
@@ -136,14 +128,12 @@ exports.updateUserProfile = async (req, res) => {
         PostalCode
     } = req.body;
 
-    // ตรวจสอบว่า req.user.id มีค่าหรือไม่ (มาจาก Middleware)
     if (!req.user || !req.user.id) {
         return res.status(401).json({ message: 'Unauthorized: No user ID found' });
     }
     const memberId = req.user.id;
 
     try {
-        // สร้าง SQL Query สำหรับอัปเดตทุกฟิลด์
         const sql = `
             UPDATE member 
             SET 
@@ -158,7 +148,6 @@ exports.updateUserProfile = async (req, res) => {
                 PostalCode = ?
             WHERE Member_ID = ?`;
 
-        // สร้าง Array ของค่าที่จะใส่ลงใน Query
         const values = [
             Title,
             FirstName,
@@ -176,16 +165,14 @@ exports.updateUserProfile = async (req, res) => {
         res.json({ message: 'อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว' });
 
     } catch (error) {
-        console.error("Error updating profile:", error); // แสดง error ใน console ของ server
+        console.error("Error updating profile:", error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล' });
     }
 };
 
-// [เพิ่ม] ฟังก์ชันสำหรับเปลี่ยนรหัสผ่าน
 exports.changePassword = async (req, res) => {
      const { currentPassword, newPassword } = req.body;
         try {
-        //                       v--- เปลี่ยนเป็น 'member' v--- เปลี่ยนเป็น 'Member_ID'
         const [rows] = await db.query('SELECT Password FROM member WHERE Member_ID = ?', [req.user.id]);
         if (rows.length === 0) {
         return res.status(404).json({ message: 'User not found' });
@@ -200,7 +187,6 @@ exports.changePassword = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
         
-        //            v--- เปลี่ยนเป็น 'member'                         v--- เปลี่ยนเป็น 'Member_ID'
          await db.query('UPDATE member SET Password = ? WHERE Member_ID = ?', [hashedPassword, req.user.id]);
          res.json({ message: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' });
 

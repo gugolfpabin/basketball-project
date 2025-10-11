@@ -62,7 +62,6 @@ export default function AdminOrderListPage() {
     { id: 'cancelled', name: 'ยกเลิกแล้ว' },
   ];
 
-  // --- User Authentication ---
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -80,7 +79,7 @@ export default function AdminOrderListPage() {
     }
   }, [navigate]);
 
-  // --- Fetch Orders ---
+
     useEffect(() => {
         const fetchOrders = async () => {
             try {
@@ -106,10 +105,9 @@ export default function AdminOrderListPage() {
         fetchOrders();
     }, []);
 
-  // --- Filtered and Paginated Orders ---
+
   const filteredOrders = useMemo(() => {
     if (selectedStatusFilter === 'all') {
-      // กรองออก pending orders ที่แอดมินไม่ต้องดู
       return orders.filter(order => order.Status !== 'pending');
     }
     return orders.filter(order => order.Status === selectedStatusFilter);
@@ -122,7 +120,7 @@ export default function AdminOrderListPage() {
     return filteredOrders.slice(startIndex, endIndex);
   }, [filteredOrders, currentPage, itemsPerPage]);
 
-  // --- Drawer & Menu Handlers ---
+
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
   const handleMenuClickUser = (event) => setAnchorElUser(event.currentTarget);
   const handleMenuCloseUser = () => setAnchorElUser(null);
@@ -136,31 +134,27 @@ export default function AdminOrderListPage() {
     }
   };
 
-  // --- Status Filter Handlers ---
   const handleStatusDropdownClick = (event) => setAnchorElStatusDropdown(event.currentTarget);
   const handleStatusDropdownClose = () => setAnchorElStatusDropdown(null);
   const handleStatusFilterSelect = (statusId) => {
     setSelectedStatusFilter(statusId);
-    setCurrentPage(1); // Reset to first page when filter changes
+    setCurrentPage(1); 
     handleStatusDropdownClose();
   };
 
-  // --- Pagination Handlers ---
   const handlePageChange = (event, page) => {
     setCurrentPage(page);
   };
 
-  // --- Status Chip Color ---
   const getStatusColor = (status) => {
     switch (status) {
-      case 'verifying': return 'warning';
+      case 'verifying': return 'info';
       case 'completed': return 'success';
       case 'cancelled': return 'error';
       default: return 'default';
     }
   };
 
-  // --- Drawer JSX ---
   const drawer = (
     <Box sx={{ bgcolor: '#212121', height: '100%', color: 'white' }}>
       <Toolbar sx={{ bgcolor: '#212121', color: 'white', justifyContent: 'center' }}>

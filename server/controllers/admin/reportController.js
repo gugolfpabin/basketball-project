@@ -3,8 +3,6 @@ const db = require('../../db');
 exports.getSalesReport = async (req, res) => {
     try {
         const { granularity = 'month', startDate, endDate } = req.query;
-
-        // --- สร้างส่วนของ SQL Query แบบไดนามิก ---
         let selectClause, groupByClause;
 
         switch (granularity) {
@@ -28,7 +26,6 @@ exports.getSalesReport = async (req, res) => {
 
         if (startDate && endDate) {
             whereClause += " AND CreatedAt BETWEEN ? AND ?";
-            // เพิ่มเวลา 23:59:59 เพื่อให้รวมข้อมูลของวันสุดท้ายทั้งวัน
             params.push(startDate, `${endDate} 23:59:59`); 
         }
         

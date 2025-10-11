@@ -1,6 +1,4 @@
-
-// src/pages/ProductDetailPage.jsx
-import React, { useState, useEffect, useMemo } from 'react'; // <--- เพิ่ม useMemo
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ChevronDown, ShoppingCart, Loader } from 'lucide-react';
@@ -18,8 +16,8 @@ export default function ProductDetailPage() {
     const [selectedColor, setSelectedColor] = useState('');
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedVariant, setSelectedVariant] = useState(null);
-    const [currentView, setCurrentView] = useState('front'); // 'front' หรือ 'back'
-    const [colorImages, setColorImages] = useState({}); // เก็บรูปของแต่ละสี
+    const [currentView, setCurrentView] = useState('front');
+    const [colorImages, setColorImages] = useState({});
     const [user, setUser] = useState(null);
     const [anchorElUser, setAnchorElUser] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -36,7 +34,6 @@ export default function ProductDetailPage() {
 
         const fetchProduct = async () => {
             try {
-                // Reset state ก่อน fetch ใหม่
                 setLoading(true);
                 setProduct(null); 
                 setError(null);
@@ -44,7 +41,7 @@ export default function ProductDetailPage() {
                 const response = await axios.get(`${apiBase}/products/${id}`);
                 setProduct(response.data);
                 
-                // จัดกลุ่มรูปภาพตามสี
+
                 if (response.data.variants && response.data.variants.length > 0) {
                     const imageGroups = {};
                     response.data.variants.forEach(variant => {
@@ -57,7 +54,6 @@ export default function ProductDetailPage() {
                     });
                     setColorImages(imageGroups);
                     
-                    // เลือกสีแรกที่มีรูป
                     const firstColor = Object.keys(imageGroups)[0];
                     if (firstColor) {
                         setSelectedColor(firstColor);
@@ -83,13 +79,10 @@ export default function ProductDetailPage() {
         }
     }, [selectedColor, selectedSize, product]);
 
-    // [แก้ไข] ใช้ useMemo เพื่อคำนวณค่าต่างๆ อย่างปลอดภัย
     const availableColors = useMemo(() => {
-        // ถ้ายังไม่มี product หรือ variants ให้ return array ว่างกลับไปก่อน
         if (!product || !product.variants) return [];
-        // ถ้ามีแล้ว ค่อยคำนวณ
         return [...new Set(product.variants.map(v => v.color))];
-    }, [product]); // คำสั่งนี้จะทำงานใหม่ก็ต่อเมื่อ product เปลี่ยนแปลง
+    }, [product]);
 
     const currentColorImages = useMemo(() => {
         if (!selectedColor || !colorImages[selectedColor]) return [];
@@ -110,8 +103,8 @@ export default function ProductDetailPage() {
 
     const handleColorSelect = (color) => {
         setSelectedColor(color);
-        setSelectedSize(''); // Reset ขนาดที่เลือกเมื่อเปลี่ยนสี
-        setCurrentView('front'); // Reset เป็นรูปหน้า
+        setSelectedSize('');
+        setCurrentView('front');
         if (colorImages[color]) {
             setSelectedImage(colorImages[color].front || colorImages[color].back || '');
         }
@@ -150,7 +143,7 @@ export default function ProductDetailPage() {
         quantity: 1
     });
      try {
-        const token = localStorage.getItem('token'); // ดึง token ที่เก็บไว้ตอน login
+        const token = localStorage.getItem('token');
         if (!token) {
             alert('Session หมดอายุ, กรุณาเข้าสู่ระบบใหม่');
             navigate('/login');
@@ -158,14 +151,14 @@ export default function ProductDetailPage() {
         }
 
         const response = await axios.post(
-            `${apiBase}/cart/add`, // Endpoint ที่เราจะสร้าง
+            `${apiBase}/cart/add`,
             {
-                variantId: selectedVariant.variantId, // ส่ง Variant_ID ไป
-                quantity: 1 // กำหนดจำนวนเบื้องต้นเป็น 1
+                variantId: selectedVariant.variantId,
+                quantity: 1
             },
             {
                 headers: {
-                    'Authorization': `Bearer ${token}` // ส่ง token ไปใน header
+                    'Authorization': `Bearer ${token}`
                 }
             }
             
@@ -184,13 +177,11 @@ export default function ProductDetailPage() {
   };
 
       const handleLogout = () => {
-    // แสดงหน้าต่าง Pop-up พร้อมข้อความและปุ่ม "OK" กับ "Cancel"
     if (window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
-        // ถ้าผู้ใช้กด "OK" (ตกลง) โค้ดในนี้จะทำงาน
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
-        setAnchorElUser(false); // ปิดเมนู Dropdown
+        setAnchorElUser(false);
         navigate('/login');
     }
 };
@@ -214,7 +205,6 @@ export default function ProductDetailPage() {
         );
     }
     
-    // Guard สุดท้าย ถ้าโหลดเสร็จแล้ว แต่ไม่มีข้อมูล
     if (!product) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen">

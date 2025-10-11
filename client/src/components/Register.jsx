@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-// Import MUI Components
 import {
   Box,
   TextField,
@@ -41,14 +40,14 @@ export default function Register() {
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [subdistricts, setSubdistricts] = useState([]);
-  const [openSnackbar, setOpenSnackbar] = useState(false); // สถานะสำหรับควบคุม Snackbar
-  const [snackbarMessage, setSnackbarMessage] = useState(""); // ข้อความใน Snackbar
-  const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // ชนิดของ Snackbar (success, error, warning, info)
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [showPassword, setShowPassword] = useState(false);
   const apiBase = "http://localhost:5000/api";
 
 
-  // โหลดจังหวัดเมื่อเปิดหน้า
+
   useEffect(() => {
     axios.get(`${apiBase}/provinces`)
       .then(res => setProvinces(res.data))
@@ -58,9 +57,8 @@ export default function Register() {
       });
   }, []);
 
-  // โหลดอำเภอเมื่อเลือกจังหวัด
+
   useEffect(() => {
-    // เคลียร์ค่าอำเภอ ตำบล รหัสไปรษณีย์ เมื่อจังหวัดเปลี่ยน
     setDistricts([]);
     setSubdistricts([]);
     setForm(prev => ({ ...prev, districtId: "", subdistrictId: "", postalCode: "" }));
@@ -75,9 +73,7 @@ export default function Register() {
     }
   }, [form.provinceId]);
 
-  // โหลดตำบลเมื่อเลือกอำเภอ
   useEffect(() => {
-    // เคลียร์ค่าตำบล รหัสไปรษณีย์ เมื่ออำเภอเปลี่ยน
     setSubdistricts([]);
     setForm(prev => ({ ...prev, subdistrictId: "", postalCode: "" }));
 
@@ -91,7 +87,6 @@ export default function Register() {
     }
   }, [form.districtId]);
 
-  // โหลดรหัสไปรษณีย์เมื่อเลือกตำบล
   useEffect(() => {
     if (form.subdistrictId) {
       axios.get(`${apiBase}/zipcode?subdistrictId=${form.subdistrictId}`)
@@ -146,7 +141,6 @@ export default function Register() {
       showSnackbar("รหัสผ่านไม่ตรงกัน", "error");
       return;
     }
-    // ตรวจสอบฟิลด์ที่จำเป็นทั้งหมด
     if (!form.title || !form.firstName || !form.lastName || !form.phone || !form.email || !form.password || !form.confirmPassword || !form.address || !form.provinceId || !form.districtId || !form.subdistrictId) {
         showSnackbar("กรุณากรอกข้อมูลที่มีเครื่องหมายดอกจัน (*) ให้ครบถ้วน", "warning");
         return;
@@ -173,7 +167,6 @@ export default function Register() {
       setTimeout(() => {
         navigate('/login');
     }, 2000);
-      // Optional: Clear form after successful registration
       setForm({
         title: "", firstName: "", lastName: "", phone: "", email: "",
         password: "", confirmPassword: "", address: "", provinceId: "",
@@ -194,13 +187,13 @@ export default function Register() {
     <Box
       sx={{
         minHeight: '100vh',
-        bgcolor: '#f5f5f5', // Light gray background
+        bgcolor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         py: 4,
         px: 2,
-        flexDirection: 'column', // เพิ่มเพื่อให้หัวข้อ "ระบบขายเสื้อผ้าบาสเกตบอล" อยู่ด้านบนสุด
+        flexDirection: 'column',
       }}
     >
       {/* หัวข้อใหญ่สุดด้านบน: ระบบขายเสื้อผ้าบาสเกตบอล */}
@@ -215,10 +208,10 @@ export default function Register() {
           p: 4,
           bgcolor: 'white',
           borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', // Soft shadow
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 3, // Space between sections
+          gap: 3,
         }}
       >
         {/* Back Button */}
@@ -388,7 +381,7 @@ export default function Register() {
                 value={form.districtId}
                 label="อำเภอ *"
                 onChange={handleChange}
-                disabled={districts.length === 0 || !form.provinceId} // ปิดถ้ายังไม่มีอำเภอ หรือยังไม่เลือกจังหวัด
+                disabled={districts.length === 0 || !form.provinceId}
               >
                 <MenuItem value="">-- เลือกอำเภอ --</MenuItem>
                 {districts.map(d => (
@@ -411,7 +404,7 @@ export default function Register() {
                 value={form.subdistrictId}
                 label="ตำบล *"
                 onChange={handleChange}
-                disabled={subdistricts.length === 0 || !form.districtId} // ปิดถ้ายังไม่มีตำบล หรือยังไม่เลือกอำเภอ
+                disabled={subdistricts.length === 0 || !form.districtId}
               >
                 <MenuItem value="">-- เลือกตำบล --</MenuItem>
                 {subdistricts.map(s => (
@@ -426,8 +419,8 @@ export default function Register() {
               name="postalCode"
               value={form.postalCode}
               fullWidth
-              InputProps={{ readOnly: true }} // ทำให้เป็น read-only
-              sx={{ bgcolor: '#eeeeee' }} // ทำให้ดูเป็น read-only ด้วยสีเทา
+              InputProps={{ readOnly: true }}
+              sx={{ bgcolor: '#eeeeee' }}
             />
           </Box>
 

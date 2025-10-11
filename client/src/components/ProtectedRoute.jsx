@@ -1,8 +1,7 @@
-// src/components/ProtectedRoute.jsx
 import React from "react";
-import { Navigate, Outlet } from "react-router-dom"; // Import Outlet
+import { Navigate, Outlet } from "react-router-dom";
 
-export default function ProtectedRoute({ allowedRoles }) { // รับ prop allowedRoles
+export default function ProtectedRoute({ allowedRoles }) {
   const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
   
@@ -15,7 +14,7 @@ export default function ProtectedRoute({ allowedRoles }) { // รับ prop all
       console.error("Failed to parse user from localStorage in ProtectedRoute", e);
       localStorage.removeItem("user"); // Clear invalid user data
       localStorage.removeItem("token"); // Clear token as well
-      return <Navigate to="/login" replace />; // Redirect to login if user data is corrupt
+      return <Navigate to="/login" replace />;
     }
   }
 
@@ -32,11 +31,11 @@ export default function ProtectedRoute({ allowedRoles }) { // รับ prop all
   }
 
  
-  const userRoleAsString = String(user.role); // แปลง role ให้เป็น String เพื่อให้เปรียบเทียบได้ง่ายขึ้น
+  const userRoleAsString = String(user.role);
   if (allowedRoles && !allowedRoles.includes(userRoleAsString)) {
     
     console.warn(`User with role ${userRoleAsString} tried to access protected route. Redirecting.`);
-    return <Navigate to="/" replace />; // หรือไปหน้า /unauthorized
+    return <Navigate to="/" replace />;
   }
 
   

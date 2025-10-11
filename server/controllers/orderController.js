@@ -1,4 +1,3 @@
-// server/controllers/orderController.js
 const db = require('../db');
 const generatePayload = require('promptpay-qr');
 const qrcode = require('qrcode');
@@ -27,7 +26,6 @@ exports.createManualOrder = async (req, res) => {
         const orderId = newOrder.insertId;
 
         for (const item of items) {
-            // 1. ดึงข้อมูล Stock และ "Cost" ของสินค้า
             const [variantRows] = await connection.query(
                 'SELECT Stock, Cost FROM product_variants WHERE Variant_ID = ? FOR UPDATE', 
                 [item.variantId]
@@ -43,7 +41,6 @@ exports.createManualOrder = async (req, res) => {
                 [item.quantity, item.variantId]
             );
 
-            // 2. บันทึกรายละเอียดสินค้าลงใน `orderdetails` พร้อมกับ "Cost" ที่ดึงมาได้
             await connection.query(
                 'INSERT INTO `orderdetails` (Order_ID, Variant_ID, Quantity, UnitPrice, UnitCost) VALUES (?, ?, ?, ?, ?)',
                 [orderId, item.variantId, item.quantity, item.unitPrice, variantRows[0].Cost] 
@@ -81,15 +78,13 @@ exports.uploadSlip = async (req, res) => {
     const { orderId } = req.params;
     const memberId = req.user.id;
 
-    // ตรวจสอบว่ามีไฟล์อัปโหลดมาหรือไม่
     if (!req.file) {
         return res.status(400).json({ message: 'กรุณาแนบไฟล์สลิป' });
     }
 
-    const slipImageUrl = `/slips/${req.file.filename}`; // Path ที่จะเก็บลง DB
+    const slipImageUrl = `/slips/${req.file.filename}`;
 
     try {
-        // ตรวจสอบว่าเป็นออเดอร์ของ user คนนี้จริงหรือไม่
         const [orders] = await db.query(
             'SELECT * FROM `orders` WHERE Order_ID = ? AND Member_ID = ?',
             [orderId, memberId]
@@ -99,19 +94,16 @@ exports.uploadSlip = async (req, res) => {
             return res.status(404).json({ message: 'ไม่พบออเดอร์นี้' });
         }
 
-        // อัปเดต DB ด้วย URL ของสลิป และเปลี่ยนสถานะเป็น "รอตรวจสอบ"
         await db.query(
             "UPDATE `orders` SET SlipImageURL = ?, Status = 'verifying' WHERE Order_ID = ?",
             [slipImageUrl, orderId]
         );
-        // Only remove cartitems that belong to variants present in the orderdetails of this order
         const [orderDetails] = await db.query('SELECT Variant_ID FROM orderdetails WHERE Order_ID = ?', [orderId]);
         if (orderDetails.length > 0) {
             const variantIds = orderDetails.map(d => d.Variant_ID);
             const [cartRows] = await db.query('SELECT Cart_ID FROM cart WHERE Member_ID = ?', [memberId]);
             if (cartRows.length > 0) {
                 const cartId = cartRows[0].Cart_ID;
-                // delete only cartitems whose Variant_ID are in the ordered variants
                 await db.query('DELETE FROM cartitem WHERE Cart_ID = ? AND Variant_ID IN (?)', [cartId, variantIds]);
             }
         }
@@ -143,7 +135,6 @@ exports.cancelOrder = async (req, res) => {
         }
 
 
-        // --- ส่วนคืนสต็อก  ---
         const [orderDetails] = await connection.query('SELECT * FROM `orderdetails` WHERE Order_ID = ?', [orderId]);
         for (const item of orderDetails) {
             await connection.query(
@@ -153,7 +144,6 @@ exports.cancelOrder = async (req, res) => {
         }
 
 
-        // --- เปลี่ยนสถานะออเดอร์ ---
         await connection.query(
             "UPDATE `orders` SET Status = 'cancelled' WHERE Order_ID = ?",
             [orderId]
@@ -175,12 +165,10 @@ exports.cancelOrder = async (req, res) => {
 exports.getOrderHistory = async (req, res) => {
     try {
         const memberId = req.user.id;
-        // รับค่า page จาก frontend, ถ้าไม่ส่งมาให้เป็นหน้า 1
         const { status, page = 1 } = req.query;
-        const limit = 10; // 👈 กำหนดให้แสดง 10 รายการต่อหน้า
+        const limit = 10;
         const offset = (page - 1) * limit;
 
-        // --- ส่วนที่ 1: นับจำนวนออเดอร์ทั้งหมด (โดยไม่นับ pending) ---
         let countSql = "SELECT COUNT(*) as total FROM `orders` WHERE Member_ID = ? AND Status != 'pending'";
         const countParams = [memberId];
         if (status && status !== 'all') {
@@ -191,7 +179,6 @@ exports.getOrderHistory = async (req, res) => {
         const totalOrders = countRows[0].total;
         const totalPages = Math.ceil(totalOrders / limit);
 
-        // --- ส่วนที่ 2: ดึงข้อมูลออเดอร์ของหน้าปัจจุบัน (โดยไม่เอา pending) ---
         let ordersQuery = `
             SELECT Order_ID, CreatedAt, TotalPrice, Status, AdminNotes
             FROM \`orders\`
@@ -207,12 +194,10 @@ exports.getOrderHistory = async (req, res) => {
 
         const [orders] = await db.query(ordersQuery, params);
         
-        // ถ้าไม่เจอออเดอร์ในหน้านี้ ก็ส่งค่าว่างกลับไป
         if (orders.length === 0) {
             return res.status(200).json({ orders: [], totalPages: totalPages });
         }
 
-        // --- ส่วนที่ 3: ดึงรายละเอียดสินค้าของออเดอร์ที่หาเจอ ---
         const orderIds = orders.map(o => o.Order_ID);
         const detailsQuery = `
             SELECT
@@ -229,12 +214,10 @@ exports.getOrderHistory = async (req, res) => {
         `;
         const [details] = await db.query(detailsQuery, [orderIds]);
 
-        // นำ details ไปใส่ในแต่ละ order
         orders.forEach(order => {
             order.details = details.filter(d => d.Order_ID === order.Order_ID);
         });
 
-        // --- ส่วนที่ 4: ส่งข้อมูลทั้งหมดกลับไป ---
         res.status(200).json({
             orders: orders,
             totalPages: totalPages
@@ -254,7 +237,6 @@ exports.deletePendingOrder = async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 1. ตรวจสอบออเดอร์ให้แน่ใจว่าเป็นของ User คนนี้ และมีสถานะเป็น 'pending' เท่านั้น
         const [orders] = await connection.query(
             "SELECT Status FROM `orders` WHERE Order_ID = ? AND Member_ID = ?",
             [orderId, memberId]
@@ -269,7 +251,6 @@ exports.deletePendingOrder = async (req, res) => {
             return res.status(400).json({ message: 'ไม่สามารถลบออเดอร์ที่ไม่ใช่สถานะ pending ได้' });
         }
 
-        // 2. คืนสต็อกสินค้ากลับเข้าระบบ
         const [orderDetails] = await connection.query('SELECT * FROM `orderdetails` WHERE Order_ID = ?', [orderId]);
         for (const item of orderDetails) {
             await connection.query(
@@ -278,10 +259,8 @@ exports.deletePendingOrder = async (req, res) => {
             );
         }
 
-        // 3. ลบข้อมูลที่เกี่ยวข้อง (ลูก) ก่อน
         await connection.query('DELETE FROM `orderdetails` WHERE Order_ID = ?', [orderId]);
 
-        // 4. ลบออเดอร์หลัก (แม่)
         await connection.query('DELETE FROM `orders` WHERE Order_ID = ?', [orderId]);
         
         await connection.commit();

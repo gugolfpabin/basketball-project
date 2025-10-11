@@ -1,4 +1,3 @@
-// src/pages/Home.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -36,16 +35,13 @@ export default function Home() {
     const handleMenuCloseUser = () => setAnchorElUser(null);
 
     const handleLogout = () => {
-    // แสดงหน้าต่าง Pop-up พร้อมข้อความและปุ่ม "OK" กับ "Cancel"
     if (window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
-        // ถ้าผู้ใช้กด "OK" (ตกลง) โค้ดในนี้จะทำงาน
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
-        setAnchorElUser(false); // ปิดเมนู Dropdown
+        setAnchorElUser(false);
         navigate('/login');
     }
-    // ถ้าผู้ใช้กด "Cancel" (ยกเลิก) จะไม่มีอะไรเกิดขึ้น
 };
 
     useEffect(() => {

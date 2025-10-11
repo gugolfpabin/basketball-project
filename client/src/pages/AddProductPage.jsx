@@ -1,4 +1,3 @@
-    // // //src/pages/AddProductPage.jsx
     import React, { useState, useEffect } from 'react';
     import { useParams, useNavigate, Link } from 'react-router-dom'
     import axios from 'axios';
@@ -67,10 +66,7 @@
             { id: 5, name: 'ถุงเท้า' },
         ];
         
-        // กำหนดขนาดมาตรฐาน
         const standardSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL','3XL', 'US M 7 / W 8.5','US M 7.5 / W 9', 'US M 8 / W 9.5', 'US M 8.5 / W 10', 'US M 9 / W 10.5', 'US M 9.5 / W 11', 'US M 10 / W 11.5', 'US M 10.5 / W 12', 'US M 11 / W 12.5', 'US M 11.5 / W 13', 'US M 12 / W 13.5', 'US M 12.5 / W 14', 'US M 13 / W 14.5',];
-
-        // --- Navbar states ---
         const [user, setUser] = useState(null);
         const [anchorElUser, setAnchorElUser] = useState(null);
 
@@ -104,13 +100,13 @@
             handleMenuCloseUser();
         };
 
-        // --- Color Variant Handlers ---
+    
         const handleAddColorVariant = () => {
             setColorVariants([
                 ...colorVariants,
                 {
                     color: '',
-                    sizes: [], // sizes is now an array of objects: { name: 'S', stock: 10 }
+                    sizes: [],
                     price: '',
                     cost: '',
                     frontImageFile: null,
@@ -189,7 +185,6 @@
             setColorVariants(newColorVariants);
         };
 
-        // --- Form Submission ---
 const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -204,7 +199,6 @@ const handleSubmit = async (event) => {
     }
 
     try {
-        // Step 1: อัปโหลดรูปภาพทั้งหมดก่อน แล้วเก็บ URL ไว้ใน Map
         const colorImageUrlMap = {};
         for (const cv of colorVariants) {
             if (cv.color && (cv.frontImageFile || cv.backImageFile)) {
@@ -246,13 +240,10 @@ const handleSubmit = async (event) => {
             }
         }
 
-        // Step 2: สร้าง Array ของ variants ทั้งหมดจากข้อมูลใน State
         const variantsToCreate = [];
         colorVariants.forEach(cv => {
-            // ตรวจสอบว่ามีข้อมูลสี, ราคา, ต้นทุน และขนาดหรือไม่
             if (cv.color && cv.price !== '' && cv.cost !== '' && cv.sizes.length > 0) {
                 cv.sizes.forEach(sizeObj => {
-                    // ตรวจสอบว่ามีการกรอกสต็อกหรือไม่
                     if (sizeObj.stock !== '') {
                         variantsToCreate.push({
                             size: sizeObj.name,
@@ -260,7 +251,6 @@ const handleSubmit = async (event) => {
                             stock: parseInt(sizeObj.stock, 10),
                             price: parseFloat(cv.price),
                             cost: parseFloat(cv.cost),
-                            // เพิ่ม images array เข้าไปในแต่ละ variant
                             images: colorImageUrlMap[cv.color] || [] 
                         });
                     }
@@ -272,15 +262,12 @@ const handleSubmit = async (event) => {
             throw new Error('กรุณากรอกรายละเอียดสี, ขนาด, ราคา, ต้นทุน และสต็อกอย่างน้อยหนึ่งรายการ');
         }
 
-        // Step 3: สร้าง Payload สุดท้ายเพื่อส่งให้ Backend
         const productData = {
             productName,
             productDescription,
             categoryId: parseInt(categoryId, 10),
             variants: variantsToCreate,
         };
-        
-        // Step 4: ส่งข้อมูลไปสร้างสินค้า
         const response = await axios.post(`${apiBase}/products`, productData);
 
         setSnackbarMessage('เพิ่มสินค้าเรียบร้อยแล้ว!');

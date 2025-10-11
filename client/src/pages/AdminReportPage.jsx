@@ -15,7 +15,6 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
-// helper: export reportData to CSV
 function exportCSV(data) {
     if (!data || !data.length) return;
     const headers = ['date','totalSales','totalCost','totalProfit','orderCount'];
@@ -30,7 +29,6 @@ function exportCSV(data) {
     URL.revokeObjectURL(url);
 }
 
-// ลงทะเบียน Component ที่จำเป็นสำหรับ Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const drawerWidth = 240;
@@ -38,12 +36,10 @@ const drawerWidth = 240;
 export default function AdminReportPage() {
     const navigate = useNavigate();
     
-    // --- State สำหรับ Layout ---
     const [user, setUser] = useState(null);
     const [anchorElUser, setAnchorElUser] = useState(null);
     const [mobileOpen, setMobileOpen] = useState(false);
 
-    // --- State สำหรับหน้ารายงาน ---
     const [reportData, setReportData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -51,13 +47,12 @@ export default function AdminReportPage() {
     const [startDate, setStartDate] = useState(startOfMonth(new Date()));
     const [endDate, setEndDate] = useState(endOfMonth(new Date()));
     const [productBreakdown, setProductBreakdown] = useState([]);
-    const [viewMode, setViewMode] = useState('summary'); // 'summary' or 'orders'
+    const [viewMode, setViewMode] = useState('summary');
     const [ordersList, setOrdersList] = useState([]);
     const [expandedOrderId, setExpandedOrderId] = useState(null);
     const [orderDetailsMap, setOrderDetailsMap] = useState({});
     const apiBase = 'http://localhost:5000/api/admin';
 
-    // --- User Authentication ---
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
@@ -74,7 +69,6 @@ export default function AdminReportPage() {
         }
     }, [navigate]);
 
-    // --- Fetch Report Data ---
     useEffect(() => {
         const fetchReport = async () => {
             if (!startDate || !endDate) return;
@@ -91,15 +85,12 @@ export default function AdminReportPage() {
                     headers: { 'Authorization': `Bearer ${token}` },
                     params
                 });
-                // server now returns { reportData, productBreakdown }
                 const payload = response.data;
-                // Normalize report rows so the UI always uses these keys: date, totalSales, totalCost, totalProfit, orderCount
                 const rawReport = (payload.reportData || payload || []);
                 const parseNumber = (v) => {
                     if (v == null) return 0;
                     if (typeof v === 'number') return v;
                     if (typeof v === 'string') {
-                        // remove whitespace, commas and common currency symbols then remove any other non-digit except dot and minus
                         const cleaned = v.replace(/[,\s฿€£¥]/g, '').replace(/[^0-9.-]/g, '');
                         const n = parseFloat(cleaned);
                         return isNaN(n) ? 0 : n;
@@ -125,7 +116,6 @@ export default function AdminReportPage() {
         fetchReport();
     }, [granularity, startDate, endDate]);
 
-    // Fetch completed orders when viewMode is 'orders'
     useEffect(() => {
         const fetchOrders = async () => {
             if (viewMode !== 'orders') return;
@@ -138,9 +128,7 @@ export default function AdminReportPage() {
                     endDate: format(endDate, 'yyyy-MM-dd'),
                     page: 1
                 };
-                // call admin orders endpoint
                 const res = await axios.get(`${apiBase}/orders`, { headers: { Authorization: `Bearer ${token}` }, params });
-                // server may return array or { orders: [...] }
                 const all = res.data.orders || res.data || [];
                 const filtered = (all || []).filter(o => {
                     const status = (o.Status || o.status || o.StatusName || '').toString().toLowerCase();
@@ -158,7 +146,6 @@ export default function AdminReportPage() {
     }, [viewMode, startDate, endDate]);
 
 
-    // --- Handlers for Layout ---
     const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
     const handleMenuClickUser = (event) => setAnchorElUser(event.currentTarget);
     const handleMenuCloseUser = () => setAnchorElUser(null);
@@ -170,7 +157,6 @@ export default function AdminReportPage() {
         }
     };
 
-    // --- Chart Data & Options ---
     const chartData = {
         labels: reportData.map(d => d.date),
         datasets: [{
@@ -207,19 +193,15 @@ export default function AdminReportPage() {
     const formatTHB = (value) => Number(value || 0).toLocaleString('th-TH', { style: 'currency', currency: 'THB' });
     const totalRevenue = reportData.reduce((sum, item) => sum + parseFloat(item.totalSales || 0), 0);
     const totalCostFromReport = reportData.reduce((sum, item) => sum + parseFloat(item.totalCost || 0), 0);
-    // prefer report costs, otherwise fallback to product breakdown
     const totalCost = totalCostFromReport > 0 ? totalCostFromReport : productBreakdown.reduce((s, p) => s + (parseFloat(p.cost || 0) || 0), 0);
-    // compute profit from totals to remain consistent with fallback
     const totalProfit = totalRevenue - totalCost;
     const totalOrders = reportData.reduce((sum, item) => sum + (item.orderCount || 0), 0);
     const avgOrderValue = totalOrders ? totalRevenue / totalOrders : 0;
-    // sanity: compute totalCost from productBreakdown as well
     const totalCostFromProducts = productBreakdown.reduce((s, p) => s + (parseFloat(p.cost || 0) || 0), 0);
     if (totalCostFromProducts > 0 && Math.abs(totalCostFromProducts - totalCost) > 1) {
         console.warn('Total cost from reportData and productBreakdown differ:', totalCost, totalCostFromProducts);
     }
 
-    // --- Drawer JSX (เหมือนเดิม) ---
     const drawer = (
         <Box sx={{ bgcolor: '#212121', height: '100%', color: 'white' }}>
             <Toolbar sx={{ justifyContent: 'center' }}>
@@ -234,7 +216,6 @@ export default function AdminReportPage() {
         </Box>
     );
     
-    // --- Main Return JSX ---
     return (
         <Box sx={{ display: 'flex' }}>
             {/* AppBar (เหมือนเดิม) */}
@@ -253,13 +234,11 @@ export default function AdminReportPage() {
                 </Toolbar>
             </AppBar>
 
-            {/* Drawer (เหมือนเดิม) */}
             <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
                 <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, bgcolor: '#212121', color: 'white' } }}>{drawer}</Drawer>
                 <Drawer variant="permanent" sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, bgcolor: '#212121', color: 'white' } }} open>{drawer}</Drawer>
             </Box>
 
-            {/* Main Content (ส่วนของเนื้อหารายงาน) */}
             <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, mt: '64px' }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 4 }}>รายงานยอดขาย</Typography>
                 
@@ -286,16 +265,12 @@ export default function AdminReportPage() {
                         onChange={(date) => setEndDate(date)}
                     />
                     <Button variant="outlined" onClick={() => {
-                        // quick preset: this period
                         const now = new Date();
-                        if (granularity === 'day') {
-                            setStartDate(now); setEndDate(now);
-                        } else if (granularity === 'month') {
-                            setStartDate(startOfMonth(now)); setEndDate(endOfMonth(now));
-                        } else {
-                            setStartDate(new Date(now.getFullYear(), 0, 1)); setEndDate(new Date(now.getFullYear(), 11, 31));
-                        }
-                    }}>วันนี้</Button>
+                        setStartDate(now);
+                        setEndDate(now);
+                        setGranularity('day');
+                        }}>วันนี้
+                        </Button>
                     <Button sx={{ ml: 1 }} variant="contained" color="secondary" onClick={() => exportCSV(reportData)}>Export CSV</Button>
                 </Paper>
 
@@ -332,7 +307,6 @@ export default function AdminReportPage() {
                                 </Paper>
                             </>
                         ) : (
-                            // ORDERS VIEW
                             <Paper sx={{ p: 2 }}>
                                 <Typography variant="h6" sx={{ mb: 2 }}>รายชื่อออเดอร์ที่สำเร็จ</Typography>
                                 <Box sx={{ overflowX: 'auto' }}>
@@ -378,7 +352,6 @@ export default function AdminReportPage() {
                                                                     (() => {
                                                                         const ord = orderDetailsMap[o.Order_ID];
                                                                         const details = ord.details || [];
-                                                                        // helper to read unit price/cost from different API shapes
                                                                         const getUnitPrice = (x) => Number(x.UnitPrice || x.Price || x.Unit_Price || x.unitPrice || 0);
                                                                         const getUnitCost = (x) => Number(x.UnitCost || x.Cost || x.cost || x.Unit_Cost || x.UnitCost || 0);
                                                                         const totalCostCalc = details.reduce((s, x) => s + (getUnitCost(x) * (Number(x.Quantity || 0))), 0);

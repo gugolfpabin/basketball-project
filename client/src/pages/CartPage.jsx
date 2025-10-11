@@ -1,4 +1,3 @@
-// src/pages/CartPage.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
@@ -27,11 +26,9 @@ export default function CartPage() {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setCartItems(response.data);
-                // initialize selection: default to all selected
                 const map = {};
                 (response.data || []).forEach(it => { map[it.cartItemId] = true; });
                 setSelectedMap(map);
-                // notify navbar about cart count
                 window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: (response.data || []).length } }));
             } catch (err) {
                 setError('ไม่สามารถโหลดข้อมูลตะกร้าสินค้าได้');
@@ -43,50 +40,40 @@ export default function CartPage() {
         fetchCartItems();
     }, [navigate]);
 
-    // ** ฟังก์ชันสำหรับแก้ไข/ลบสินค้า (จะทำในขั้นตอนถัดไป) **
-     const handleUpdateQuantity = async (cartItemId, newQuantity) => { // <--- เปลี่ยนเป็น async
+     const handleUpdateQuantity = async (cartItemId, newQuantity) => {
     if (newQuantity < 1) return;
 
-    // 1. อัปเดตหน้าจอทันที (Optimistic Update)
-    // เพื่อให้ผู้ใช้เห็นว่าตัวเลขเปลี่ยนแล้ว ไม่ต้องรอ
-    const originalItems = [...cartItems]; // เก็บของเก่าไว้เผื่อ Error
+    //อัปเดตหน้าจอทันที เพื่อให้ผู้ใช้เห็นว่าตัวเลขเปลี่ยนแล้ว ไม่ต้องรอ(Optimistic Update)
+    const originalItems = [...cartItems];
     setCartItems(currentItems =>
         currentItems.map(item =>
             item.cartItemId === cartItemId ? { ...item, quantity: newQuantity } : item
         )
     );
 
-    // 2. ส่งคำสั่งไปบันทึกที่ Server
     try {
         const token = localStorage.getItem('token');
         await axios.put(`${apiBase}/cart/update/${cartItemId}`,
             { quantity: newQuantity },
             { headers: { 'Authorization': `Bearer ${token}` } }
         );
-        // ถ้าสำเร็จก็ไม่ต้องทำอะไร เพราะหน้าจอเปลี่ยนไปแล้ว
-
     } catch (err) {
         alert('ไม่สามารถอัปเดตจำนวนสินค้าได้ กรุณาลองอีกครั้ง');
         console.error("Update quantity error:", err);
-        // ถ้า Server Error ให้เอารายการของเก่ากลับมาแสดง
         setCartItems(originalItems);
     }
 };
 
-    const handleRemoveItem = async (cartItemId) => { // <--- เปลี่ยนเป็น async
+    const handleRemoveItem = async (cartItemId) => {
     if (!window.confirm('คุณต้องการลบสินค้านี้ใช่หรือไม่?')) {
         return;
     }
 
     try {
-        // --- ส่วนที่เพิ่มเข้ามา: ส่งคำสั่งลบไปที่ Server ---
         const token = localStorage.getItem('token');
         await axios.delete(`${apiBase}/cart/remove/${cartItemId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        // --- จบส่วนที่เพิ่มเข้ามา ---
-
-        // อัปเดตหน้าจอ (ทำเหมือนเดิม)
         setCartItems(currentItems =>
             currentItems.filter(item => item.cartItemId !== cartItemId)
         );
@@ -98,7 +85,7 @@ export default function CartPage() {
 };
 
 const handleCheckout = async () => {
-    console.log("1. เริ่มทำงาน handleCheckout"); // Log ที่ 1
+    console.log("1. เริ่มทำงาน handleCheckout");
 
     const token = localStorage.getItem('token');
     if (cartItems.length === 0) {
@@ -106,7 +93,6 @@ const handleCheckout = async () => {
         return;
     }
 
-    // collect only selected items
     const itemsToSend = cartItems.filter(it => selectedMap[it.cartItemId]);
     if (itemsToSend.length === 0) {
         alert('โปรดเลือกสินค้าที่ต้องการชำระเงินก่อน');
@@ -122,12 +108,10 @@ const handleCheckout = async () => {
             { headers: { 'Authorization': `Bearer ${token}` } }
         );
 
-        // Refresh cart from server to reflect authoritative server-side changes
         try {
             const cartRes = await axios.get(`${apiBase}/cart`, { headers: { 'Authorization': `Bearer ${token}` } });
             const newCart = cartRes.data || [];
             setCartItems(newCart);
-            // rebuild selection map (select remaining items by default)
             const newMap = {};
             newCart.forEach(it => { newMap[it.cartItemId] = true; });
             setSelectedMap(newMap);
@@ -139,11 +123,9 @@ const handleCheckout = async () => {
         navigate('/manual-payment', { state: response.data });
 
     } catch (err) {
-        // Log ที่สำคัญที่สุดตอนเกิดปัญหา
         console.error("เกิดข้อผิดพลาดใน 'catch' block:", err); 
         
         if (err.response) {
-            // ถ้า Server ตอบกลับมาพร้อม Error ให้แสดงรายละเอียด
             console.error("ข้อมูล Error จาก Server:", err.response.data);
             console.error("Status Code:", err.response.status);
         }

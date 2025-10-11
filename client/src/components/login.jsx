@@ -73,33 +73,30 @@ export default function Login() {
 
     try {
       const response = await axios.post(`${apiBase}/login`, {
-        Email: form.email, // ชื่อ field ต้องตรงกับที่ Backend รับ
-        Password: form.password, // ชื่อ field ต้องตรงกับที่ Backend รับ
+        Email: form.email,
+        Password: form.password,
       });
 
       const { token, user } = response.data;
 
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user)); // เก็บ user object (รวม role)
+      localStorage.setItem('user', JSON.stringify(user));
 
       showSnackbar('เข้าสู่ระบบสำเร็จ!', 'success');
       console.log('Login successful:', response.data);
 
-      // ตรวจสอบ Role ของผู้ใช้เพื่อ Redirect
-  
-      if (user.role === 1) { // ถ้าเป็น Admin (role 1)
-        navigate('/dashboard'); // พาไปหน้า Dashboard
-      } else if (user.role === 0) { // ถ้าเป็นสมาชิกทั่วไป (role 0)
-        navigate('/'); // พาไปหน้า Home (ร้านค้า)
+      // ตรวจสอบ Role 
+      if (user.role === 1) {
+        navigate('/dashboard');
+      } else if (user.role === 0) { 
+        navigate('/');
       } else {
-        // กรณี role ไม่ตรงกับที่กำหนด (เผื่อไว้)
-        navigate('/'); // พาไปหน้า Home เป็นค่าเริ่มต้น
+        navigate('/');
       }
 
     } catch (error) {
       console.error('Login error:', error);
       if (error.response) {
-        // Server ส่ง response กลับมาพร้อม status code
         if (error.response.status === 401) {
           showSnackbar('อีเมลหรือรหัสผ่านไม่ถูกต้อง', 'error');
         } else if (error.response.data && error.response.data.message) {
@@ -108,10 +105,8 @@ export default function Login() {
           showSnackbar(`เกิดข้อผิดพลาดในการเข้าสู่ระบบ: ${error.response.status} - ${error.response.statusText || 'โปรดลองอีกครั้ง'}`, 'error');
         }
       } else if (error.request) {
-        // Request ถูกส่งไปแล้ว แต่ไม่ได้รับ response (เช่น ไม่มีอินเทอร์เน็ต, server ไม่ทำงาน)
         showSnackbar("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต", "error");
       } else {
-        // ข้อผิดพลาดอื่นๆ ที่ไม่ได้เกิดจาก response หรือ request
         showSnackbar("เกิดข้อผิดพลาดที่ไม่คาดคิด โปรดลองอีกครั้ง", "error");
       }
     }
@@ -158,7 +153,7 @@ export default function Login() {
             mb: 2
         }}>
           <IconButton
-            onClick={() => navigate('/')} // กลับไปหน้า Home หรือหน้าก่อนหน้า
+            onClick={() => navigate('/')} 
             color="inherit"
             aria-label="back"
             sx={{ position: 'absolute', left: 0 }}
@@ -227,7 +222,7 @@ export default function Login() {
           </Box>
         </Box>
 
-        {/* Snackbar for notifications */}
+        {/* Snackbar */}
         <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
           <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>

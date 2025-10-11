@@ -43,9 +43,7 @@ export default function ProfilePage() {
         confirmPassword: ''
     });
 
-    // --- START: เพิ่ม State สำหรับตรวจสอบฟอร์ม ---
     const [isFormValid, setIsFormValid] = useState(false);
-    // --- END: เพิ่ม State ---
 
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -71,7 +69,6 @@ export default function ProfilePage() {
         setOpenSnackbar(false);
     };
     
-    // ... (useEffect for fetching initial data remains the same) ...
     useEffect(() => {
         const fetchInitialData = async () => {
             if (!token) {
@@ -112,7 +109,6 @@ export default function ProfilePage() {
         fetchInitialData();
     }, [navigate, token]);
 
-    // ... (useEffect for address dropdowns remains the same) ...
     useEffect(() => {
         if (formData.Province_ID) {
             axios.get(`${apiBase}/districts?provinceId=${formData.Province_ID}`)
@@ -143,14 +139,11 @@ export default function ProfilePage() {
         }
     }, [formData.Subdistrict_ID]);
 
-    // --- START: เพิ่ม useEffect สำหรับตรวจสอบความสมบูรณ์ของฟอร์ม ---
     useEffect(() => {
-        // ไม่นับรหัสไปรษณีย์ เพราะจะถูกเติมอัตโนมัติ
         const { PostalCode, ...requiredFields } = formData;
         const allFieldsFilled = Object.values(requiredFields).every(value => value !== '' && value !== null);
         setIsFormValid(allFieldsFilled);
     }, [formData]);
-    // --- END: เพิ่ม useEffect ---
 
     const handleChange = e => {
         const { name, value } = e.target;
@@ -163,7 +156,6 @@ export default function ProfilePage() {
 
     const handleProfileUpdate = async e => {
         e.preventDefault();
-        // การตรวจสอบนี้เป็นการป้องกันอีกชั้นหนึ่ง แม้ว่าปุ่มจะถูกปิดใช้งานไปแล้ว
         if (!isFormValid) {
             showSnackbar('กรุณากรอกข้อมูลให้ครบทุกช่อง', 'warning');
             return;
@@ -182,7 +174,6 @@ export default function ProfilePage() {
 
     const handleChangePassword = async e => {
         e.preventDefault();
-        // ... (password change logic remains the same) ...
         if (passwordData.newPassword !== passwordData.confirmPassword) {
             showSnackbar('รหัสผ่านใหม่และการยืนยันไม่ตรงกัน', 'error');
             return;

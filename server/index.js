@@ -1,4 +1,3 @@
-//server/index.js
 require('dotenv').config();
 
 const express = require('express');
@@ -15,15 +14,6 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 
-app.put('/api/test-body', (req, res) => {
-  console.log('--- TESTING /api/test-body ---');
-  console.log('Received body:', req.body); // เราจะดู Log จากตรงนี้
-  console.log('--- END TEST ---');
-  res.status(200).json({
-      message: 'Test successful',
-      receivedBody: req.body
-  });
-});
 
 const authRoutes = require('./routes/authRoutes');
 const locationRoutes = require('./routes/locationRoutes');

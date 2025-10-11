@@ -14,7 +14,7 @@ import {
   Delete as DeleteIcon, 
   Add as AddIcon, 
   ArrowBack as ArrowBackIcon,
-  Save as SaveIcon // [เพิ่ม] Import SaveIcon
+  Save as SaveIcon
 } from '@mui/icons-material';
 
 const categories = [
@@ -26,19 +26,17 @@ const categories = [
 ];
 
 export default function ManageVariantsPage() {
-  const { id: productId } = useParams(); // เปลี่ยนชื่อ id เป็น productId เพื่อความชัดเจน
+  const { id: productId } = useParams();
   const navigate = useNavigate();
   
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // State สำหรับการลบ (เหมือนเดิม)
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  // [เพิ่ม] State สำหรับ Modal แก้ไขข้อมูลสินค้า
   const [openEditProductDialog, setOpenEditProductDialog] = useState(false);
   const [productToEdit, setProductToEdit] = useState({ name: '', description: '', categoryId: '' });
 
@@ -50,7 +48,6 @@ export default function ManageVariantsPage() {
       setLoading(true);
       const response = await axios.get(`${apiBase}/products/${productId}`);
       setProduct(response.data);
-      // [เพิ่ม] ตั้งค่าข้อมูลเริ่มต้นสำหรับฟอร์มแก้ไขสินค้าหลัก
       if (response.data) {
         setProductToEdit({
           name: response.data.name,
@@ -69,7 +66,6 @@ export default function ManageVariantsPage() {
     fetchProductDetails();
   }, [fetchProductDetails]);
   
-  // --- Handlers เดิม ---
   const handleEdit = (variantId) => navigate(`/admin/products/edit/${productId}/variant/${variantId}`);
   const handleAddVariant = () => navigate(`/admin/products/edit/${productId}/variant/new`);
   const handleDeleteClick = (variant) => {
@@ -79,7 +75,6 @@ export default function ManageVariantsPage() {
   const handleDeleteConfirm = async () => {
         if (!itemToDelete) return;
         try {
-            // เรียกใช้ endpoint ใหม่ที่เราสร้าง /variants/:variantId
             await axios.delete(`${apiBase}/products/variants/${itemToDelete.variantId}`);
             setSnackbar({ open: true, message: 'ลบ Variant สำเร็จ!', severity: 'success' });
             fetchProductDetails();
@@ -91,7 +86,6 @@ export default function ManageVariantsPage() {
         }
     };
 
-  // [เพิ่ม] Handlers สำหรับจัดการ Modal แก้ไขข้อมูลสินค้า
   const handleOpenEditProductDialog = () => setOpenEditProductDialog(true);
   const handleCloseEditProductDialog = () => setOpenEditProductDialog(false);
 
@@ -102,24 +96,22 @@ export default function ManageVariantsPage() {
 
   const handleUpdateProductInfo = async () => {
     try {
-      // เตรียมข้อมูลที่จะส่งไปอัปเดต (ไม่ต้องส่ง variants)
       const payload = {
         name: productToEdit.name,
         description: productToEdit.description,
         categoryId: productToEdit.categoryId,
-        // สำคัญ: ไม่ต้องส่ง variants ไปด้วย เพื่อไม่ให้กระทบกับข้อมูล Variant เดิม
       };
       
       await axios.put(`${apiBase}/products/${productId}`, payload);
       setSnackbar({ open: true, message: 'อัปเดตข้อมูลสินค้าสำเร็จ!', severity: 'success' });
-      fetchProductDetails(); // โหลดข้อมูลใหม่ทั้งหมด
-      handleCloseEditProductDialog(); // ปิด Modal
+      fetchProductDetails();
+      handleCloseEditProductDialog();
     } catch (err) {
       setSnackbar({ open: true, message: 'เกิดข้อผิดพลาดในการอัปเดต', severity: 'error' });
     }
   };
 
-  // --- ส่วนการแสดงผล (JSX) ---
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
   if (error) return <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>;
 
@@ -136,12 +128,11 @@ export default function ManageVariantsPage() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {/* [เพิ่ม] ปุ่มแก้ไขข้อมูลสินค้า */}
           <Button variant="outlined" startIcon={<EditIcon />} onClick={handleOpenEditProductDialog}>
             แก้ไขข้อมูลสินค้า
           </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddVariant}>
-            เพิ่ม Variant
+            เพิ่ม รายละเอียดสินค้า
           </Button>
         </Box>
       </Box>
@@ -184,7 +175,7 @@ export default function ManageVariantsPage() {
 
       {/* Dialog & Snackbar สำหรับลบ (เหมือนเดิม) */}
       <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-         <DialogTitle>ยืนยันการลบ Variant?</DialogTitle>
+         <DialogTitle>ยืนยันการลบ รายละเอียดสินค้านี้?</DialogTitle>
         <DialogContent>
           <DialogContentText>
             ต้องการลบ "{product.name}" (สี: {itemToDelete?.color}, ขนาด: {itemToDelete?.size}) ใช่หรือไม่?

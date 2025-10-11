@@ -20,7 +20,6 @@ import Navbar from '../components/Navbar';
 
 
 export default function OrderHistoryPage() {
-    // --- State ---
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -29,7 +28,6 @@ export default function OrderHistoryPage() {
     const [totalPages, setTotalPages] = useState(0);
     const [anchorElStatusDropdown, setAnchorElStatusDropdown] = useState(null);
 
-    // --- Constants ---
     const apiBase = 'http://localhost:5000/api';
 
 
@@ -40,7 +38,6 @@ export default function OrderHistoryPage() {
         { id: 'cancelled', name: 'ยกเลิกแล้ว' },
     ];
 
-    // --- Data Fetching ---
     useEffect(() => {
         const fetchOrders = async () => {
             setLoading(true);
@@ -69,19 +66,17 @@ export default function OrderHistoryPage() {
         fetchOrders();
     }, [currentFilter, currentPage]);
 
-    // --- Handlers ---
     const handleStatusDropdownClick = (event) => setAnchorElStatusDropdown(event.currentTarget);
     const handleStatusDropdownClose = () => setAnchorElStatusDropdown(null);
     const handleStatusFilterSelect = (statusId) => {
         setCurrentFilter(statusId);
-        setCurrentPage(1); // กลับไปหน้า 1 เมื่อเปลี่ยนฟิลเตอร์
+        setCurrentPage(1);
         handleStatusDropdownClose();
     };
     const handlePageChange = (event, page) => {
         setCurrentPage(page);
     };
 
-    // --- Helper Functions ---
     const getStatusColor = (status) => {
         switch (status) {
             case 'verifying': return 'info';
@@ -93,18 +88,17 @@ export default function OrderHistoryPage() {
     
     const getAlertSeverityForStatus = (status) => {
   switch (status) {
-    case 'completed': // สถานะ "ชำระเงินเสร็จสิ้น"
-      return 'success'; // สีเขียว
-    case 'cancelled': // สถานะ "ยกเลิก"
-      return 'error';   // สีแดง
-    case 'verifying': // สถานะ "กำลังตรวจสอบ"
-      return 'info';    // สีฟ้า
+    case 'completed':
+      return 'success';
+    case 'cancelled':
+      return 'error';
+    case 'verifying':
+      return 'info';
     default:
-      return 'info';    // สถานะอื่นๆ ให้เป็นสีฟ้าตามเดิม
+      return 'info';
   }
 };
 
-    // --- JSX ---
     return (
         <>
      <Navbar />

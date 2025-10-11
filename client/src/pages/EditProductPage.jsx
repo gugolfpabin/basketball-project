@@ -75,56 +75,56 @@ export default function EditProductPage() {
     setSubmitting(true);
     setError(null);
 
-    const uploadImage = async (file) => {
-      const formData = new FormData();
-      formData.append("image", file);
-      const res = await axios.post(`${apiBase}/upload-images`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      if (res.data.success) return res.data.PictureURL;
-      throw new Error(res.data.message || 'Image upload failed');
+  const uploadImage = async (file) => {
+        const formData = new FormData();
+        formData.append("image", file);
+        const res = await axios.post(`${apiBase}/upload-images`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
+        if (res.data.success) return res.data.imageUrl; 
+        throw new Error(res.data.message || 'Image upload failed');
     };
 
     try {
-      // [แก้ไข] สร้าง Array รูปภาพโดยยึดจากของเดิม เพื่อ "รักษารูปที่ไม่ถูกเปลี่ยน"
-      let finalImages = [...(variant.images || [])];
+        let finalImages = [...(variant.images || [])];
 
-      // ถ้ามี "ไฟล์รูปด้านหน้าใหม่" ให้อัปโหลดและอัปเดต URL
-      if (frontImageFile) {
-        const frontUrl = await uploadImage(frontImageFile);
-        finalImages = [...finalImages.filter(img => img.ImageType !== 'front'), { PictureURL: frontUrl, ImageType: 'front' }];
-      }
+        // ถ้ามีไฟล์รูปหน้าใหม่
+        if (frontImageFile) {
+            const frontUrl = await uploadImage(frontImageFile);
+            finalImages = [...finalImages.filter(img => img.ImageType !== 'front'), 
+            { PictureURL: frontUrl, ImageType: 'front' }];
+        }
 
-      // ถ้ามี "ไฟล์รูปด้านหลังใหม่" ให้อัปโหลดและอัปเดต URL
-      if (backImageFile) {
-        const backUrl = await uploadImage(backImageFile);
-        finalImages = [...finalImages.filter(img => img.ImageType !== 'back'), { PictureURL: backUrl, ImageType: 'back' }];
-      }
+        // ถ้ามีไฟล์รูปหลังใหม่
+        if (backImageFile) {
+            const backUrl = await uploadImage(backImageFile);
+            finalImages = [...finalImages.filter(img => img.ImageType !== 'back'), 
+            { PictureURL: backUrl, ImageType: 'back' }];
+        }
+        
+        const updatedVariant = { ...variant, images: finalImages.filter(img => img.PictureURL) };
 
-      // [สำคัญ] คัดกรองเอารูปภาพที่มี PictureURL จริงๆ เท่านั้น ก่อนส่งไป Backend
-      const updatedVariant = { ...variant, images: finalImages.filter(img => img.PictureURL) };
+        const finalVariants = isNewVariant
+            ? [...product.variants, updatedVariant]
+            : product.variants.map(v => v.variantId.toString() === variantId ? updatedVariant : v);
+        
+        const payload = {
+            name: product.name,
+            description: product.description,
+            categoryId: product.categoryId,
+            variants: finalVariants,
+        };
 
-      const finalVariants = isNewVariant
-        ? [...product.variants, updatedVariant]
-        : product.variants.map(v => v.variantId.toString() === variantId ? updatedVariant : v);
-      
-      const payload = {
-        name: product.name,
-        description: product.description,
-        categoryId: product.categoryId,
-        variants: finalVariants,
-      };
-
-      await axios.put(`${apiBase}/products/${productId}`, payload);
-      setSuccess(true);
-      setTimeout(() => navigate(`/admin/products/manage/${productId}`), 1500);
+        await axios.put(`${apiBase}/products/${productId}`, payload);
+        setSuccess(true);
+        setTimeout(() => navigate(`/admin/products/manage/${productId}`), 1500);
 
     } catch (err) {
-      setError('เกิดข้อผิดพลาดในการบันทึก: ' + (err.response?.data?.message || err.message));
+        setError('เกิดข้อผิดพลาดในการบันทึก: ' + (err.response?.data?.message || err.message));
     } finally {
-      setSubmitting(false);
+        setSubmitting(false);
     }
-  };
+};
 
 
   if (loading) {
@@ -150,7 +150,7 @@ export default function EditProductPage() {
     <Container maxWidth="md">
       <FormContainer component="form" onSubmit={handleSubmit}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-          {isNewVariant ? `เพิ่ม Variant สำหรับ ${product?.name || ''}` : `แก้ไข Variant`}
+          {isNewVariant ? `เพิ่ม รายละเอียด สำหรับ ${product?.name || ''}` : `แก้ไข รายละเอียด`}
         </Typography>
         
         {success && <Alert severity="success" sx={{ mb: 2 }}>บันทึกข้อมูลสำเร็จ!</Alert>}
@@ -176,7 +176,7 @@ export default function EditProductPage() {
             label="ราคา (Price)"
             name="price"
             type="number"
-            value={variant?.price ?? 0} // ใช้ ?? 0 เพื่อรองรับค่า null/undefined
+            value={variant?.price ?? 0} 
             onChange={handleVariantChange}
             fullWidth
             required

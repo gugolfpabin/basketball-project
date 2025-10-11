@@ -1,4 +1,3 @@
-    // server/controllers/productController.js
 const db = require('../../db');
 const categoryIdToNameMap = {
         1: 'เสื้อบาสเกตบอล',
@@ -14,7 +13,6 @@ exports.getAllProducts = async (req, res) => {
     const searchTerm = req.query.searchTerm;
     const view = req.query.view;
     let connection;
-    // เตรียม map สำหรับ CategoryName เพื่อลดการ join ที่ไม่จำเป็นในบางกรณี
     const categoryIdToNameMap = {
         1: 'เสื้อบาสเกตบอล', 2: 'เสื้อ T-Shirt', 3: 'กางเกงบาสเกตบอล',
         4: 'รองเท้าบาสเกตบอล', 5: 'ถุงเท้า',
@@ -28,7 +26,6 @@ exports.getAllProducts = async (req, res) => {
         let whereClause = [];
 
         if (view === 'admin') {
-            // Query สำหรับหน้า Admin Dashboard (แสดงผลแบบ Product)
             sql = `
                 SELECT
                     p.Product_ID,
@@ -60,7 +57,6 @@ exports.getAllProducts = async (req, res) => {
             sql += ' GROUP BY p.Product_ID, p.ProductName, c.CategoryName ORDER BY p.Product_ID ASC';
 
             const [rows] = await connection.query(sql, params);
-            // แปลงข้อมูลให้ Frontend ใช้ง่าย
             const products = rows.map(row => ({
                 id: row.Product_ID,
                 productName: row.ProductName,
@@ -90,7 +86,7 @@ exports.getAllProducts = async (req, res) => {
                 params.push(parseInt(categoryIdFilter));
             }
             
-            // [แก้ไข] เพิ่มเงื่อนไขการค้นหาให้ครอบคลุม ชื่อ, ประเภท, สี, และ ขนาด
+
             if (searchTerm) {
                 const likeTerm = `%${searchTerm.toLowerCase()}%`;
                 whereClause.push(`
@@ -112,7 +108,6 @@ exports.getAllProducts = async (req, res) => {
 
         const [rows] = await connection.query(sql, params);
         
-        // --- ส่วนประมวลผล Response ---
         if (view === 'admin') {
             const products = rows.map(row => ({
                 id: row.Product_ID,
@@ -152,8 +147,6 @@ exports.getAllProducts = async (req, res) => {
 
 
 exports.getOneProduct = async (req, res) => {
-    // (ใช้โค้ดชุดเดิมจากคำตอบก่อนหน้าได้เลย เพราะถูกต้องอยู่แล้ว)
-    // โค้ดนี้จะแยก Query รูปภาพกับ Variant ทำให้ข้อมูลแม่นยำ
     const { id: productId } = req.params;
     let connection;
     try {
@@ -217,14 +210,12 @@ exports.createProduct = async (req, res) => {
             connection = await db.getConnection();
             await connection.beginTransaction();
 
-            // 1. Insert into 'product' table
             const [productResult] = await connection.query(
                 'INSERT INTO product (ProductName, ProductDescription, Category_ID) VALUES (?, ?, ?)',
                 [productName, productDescription, categoryId]
             );
             const productId = productResult.insertId;
 
-            // 2. Insert into 'product_variants' and 'picture' tables
             for (const variant of variants) {
                 const [variantResult] = await connection.query(
                     'INSERT INTO product_variants (Product_ID, Size, Color, Stock, Price, Cost) VALUES (?, ?, ?, ?, ?, ?)',
@@ -232,7 +223,6 @@ exports.createProduct = async (req, res) => {
                 );
                 const variantId = variantResult.insertId;
 
-                // อัปโหลดรูปภาพใหม่ (รองรับ front และ back)
                 if (variant.images && Array.isArray(variant.images)) {
                     for (const image of variant.images) {
                         await connection.query(
@@ -288,7 +278,7 @@ exports.updateProduct = async (req, res) => {
                         'UPDATE product_variants SET Size = ?, Color = ?, Stock = ?, Price = ?, Cost = ? WHERE Variant_ID = ?',
                         [variant.size, variant.color, variant.stock, variant.price, variant.cost, currentVariantId]
                     );
-                    await connection.query('DELETE FROM picture WHERE Variant_ID = ?', [currentVariantId]);
+                    
                 } else {
                     const [result] = await connection.query(
                         'INSERT INTO product_variants (Product_ID, Size, Color, Stock, Price, Cost) VALUES (?, ?, ?, ?, ?, ?)',
@@ -297,9 +287,9 @@ exports.updateProduct = async (req, res) => {
                     currentVariantId = result.insertId;
                 }
 
-                if (variant.images && Array.isArray(variant.images)) {
+                if (variant.images && Array.isArray(variant.images) && variant.images.length > 0) {
+                     await connection.query('DELETE FROM picture WHERE Variant_ID = ?', [currentVariantId]);
                     for (const image of variant.images) {
-                        // [สำคัญ] ใช้ Key "PictureURL" และ "ImageType" ให้ตรงกับที่ Frontend ส่งมา
                         if (image.PictureURL && image.ImageType) {
                             await connection.query(
                                 'INSERT INTO picture (Product_ID, Variant_ID, PictureURL, ImageType, Color) VALUES (?, ?, ?, ?, ?)',
@@ -365,22 +355,18 @@ exports.deleteProduct = async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 1. ดึง Variant IDs ทั้งหมดที่อยู่ใต้ Product นี้
         const [variants] = await connection.query(
             'SELECT Variant_ID FROM product_variants WHERE Product_ID = ?', 
             [productId]
         );
         const variantIds = variants.map(v => v.Variant_ID);
 
-        // 2. ถ้ามี Variants, ให้ลบรูปภาพทั้งหมดที่เกี่ยวข้องกับ Variants เหล่านั้น
         if (variantIds.length > 0) {
             await connection.query('DELETE FROM picture WHERE Variant_ID IN (?)', [variantIds]);
         }
 
-        // 3. ลบ Variants ทั้งหมด
         await connection.query('DELETE FROM product_variants WHERE Product_ID = ?', [productId]);
 
-        // 4. ลบ Product หลัก
         const [result] = await connection.query('DELETE FROM product WHERE Product_ID = ?', [productId]);
 
         if (result.affectedRows === 0) {

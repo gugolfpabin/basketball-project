@@ -5,7 +5,6 @@ import Home from './Home.jsx';
 import Register from './components/Register.jsx'; 
 import Login from './components/login.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import Layout from './components/Layout.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
@@ -35,7 +34,7 @@ function App() {
         <Route path="/product/:id" element={<ProductDetailPage />} />
 
        {/* User */}
-       <Route path="/profile" element={<Layout><ProfilePage /></Layout>} />
+       <Route path="/profile" element={<ProfilePage />} />
        <Route path="/cart" element={<CartPage />} />
        <Route path="/manual-payment" element={<ManualPaymentPage />} />
        <Route path="/my-orders"  element={<OrderHistoryPage />} />
