@@ -19,7 +19,7 @@ export default function AdminOrderDetailPage() {
     const statusOptions = [
         { id: 'verifying', name: 'ระหว่างตรวจสอบ' },
         { id: 'completed', name: 'ชำระเงินเสร็จสิ้น' },
-        { id: 'cancelled', name: 'ยกเลิก' },
+        { id: 'cancelled', name: 'ยกเลิกแล้ว' },
     ];
 
     useEffect(() => {
@@ -189,7 +189,7 @@ export default function AdminOrderDetailPage() {
                         disabled={isSaving}
                         className="mt-3 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center"
                     >
-                        {isSaving ? <CircularProgress size={20} color="inherit" /> : 'บันทุกการเปลี่ยนแปลง'}
+                        {isSaving ? <CircularProgress size={20} color="inherit" /> : 'บันทึกการเปลี่ยนแปลง'}
                     </button>
                     {saveMessage && <Alert severity={saveMessage.includes('สำเร็จ') ? 'success' : 'error'} sx={{ mt: 2, p: 1, fontSize: '0.875rem' }}>{saveMessage}</Alert>}
                 </div>

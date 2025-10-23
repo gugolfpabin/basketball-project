@@ -104,7 +104,16 @@ export default function Register() {
 
   const handleChange = e => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'phone') {
+        const numericValue = value.replace(/[^0-9]/g, '');
+        if (numericValue.length <= 10) {
+            setForm(prev => ({ ...prev, [name]: numericValue }));
+        }
+    } else {
+        setForm(prev => ({ ...prev, [name]: value }));
+    }
+
     if (openSnackbar) {
       setOpenSnackbar(false);
     }
@@ -137,10 +146,23 @@ export default function Register() {
       setOpenSnackbar(false);
     }
 
+    // --- Validation Checks ---
     if (form.password !== form.confirmPassword) {
       showSnackbar("รหัสผ่านไม่ตรงกัน", "error");
       return;
     }
+
+    if (form.phone.length !== 10) {
+        showSnackbar("กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก", "error");
+        return;
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])[A-Za-z0-9]{8,}$/;
+    if (!passwordRegex.test(form.password)) {
+        showSnackbar("รหัสผ่านต้องมีอย่างน้อย 8 ตัว, และประกอบด้วยตัวพิมพ์เล็กและพิมพ์ใหญ่", "error");
+        return;
+    }
+
     if (!form.title || !form.firstName || !form.lastName || !form.phone || !form.email || !form.password || !form.confirmPassword || !form.address || !form.provinceId || !form.districtId || !form.subdistrictId) {
         showSnackbar("กรุณากรอกข้อมูลที่มีเครื่องหมายดอกจัน (*) ให้ครบถ้วน", "warning");
         return;
@@ -196,7 +218,6 @@ export default function Register() {
         flexDirection: 'column',
       }}
     >
-      {/* หัวข้อใหญ่สุดด้านบน: ระบบขายเสื้อผ้าบาสเกตบอล */}
       <Typography component="h1" variant="h4" sx={{ fontWeight: 'bold', color: '#333', mb: 4, textAlign: 'center' }}>
         ระบบขายเสื้อผ้าบาสเกตบอล
       </Typography>
@@ -214,7 +235,6 @@ export default function Register() {
           gap: 3,
         }}
       >
-        {/* Back Button */}
         <Box sx={{ alignSelf: 'flex-start' }}>
           <IconButton
             onClick={() => window.history.back()}
@@ -225,16 +245,13 @@ export default function Register() {
           </IconButton>
         </Box>
 
-        {/* Header Section - Centered (เฉพาะคำว่า "สมัครสมาชิก") */}
         <Box sx={{ textAlign: 'center', mb: 2 }}>
           <Typography component="h2" variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
             สมัครสมาชิก
           </Typography>
         </Box>
 
-        {/* Form Section */}
         <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {/* Row 1: Title, Phone */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <FormControl fullWidth required>
               <InputLabel id="title-label">คำนำหน้า</InputLabel>
@@ -249,7 +266,7 @@ export default function Register() {
                 <MenuItem value="">-- เลือกคำนำหน้า --</MenuItem>
                 <MenuItem value="นาย">นาย</MenuItem>
                 <MenuItem value="นางสาว">นางสาว</MenuItem>
-               
+                <MenuItem value="นาง">นาง</MenuItem>
               </Select>
             </FormControl>
             <TextField
@@ -260,10 +277,10 @@ export default function Register() {
               onChange={handleChange}
               fullWidth
               required
+              inputProps={{ maxLength: 10 }}
             />
           </Box>
 
-          {/* Row 2: First Name, Last Name */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <TextField
               label="ชื่อ"
@@ -283,7 +300,6 @@ export default function Register() {
             />
           </Box>
 
-          {/* Row 3: Email */}
           <TextField
             label="อีเมล"
             name="email"
@@ -294,30 +310,30 @@ export default function Register() {
             required
           />
 
-          {/* Row 4: Password, Confirm Password */}
           <TextField
-                      label="รหัสผ่าน"
-                      name="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={form.password}
-                      onChange={handleChange}
-                      fullWidth
-                      required
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              aria-label="toggle password visibility"
-                              onClick={handleClickShowPassword}
-                              onMouseDown={handleMouseDownPassword}
-                              edge="end"
-                            >
-                              {showPassword ? <VisibilityOff /> : <Visibility />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
+            label="รหัสผ่าน"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            value={form.password}
+            onChange={handleChange}
+            fullWidth
+            required
+            helperText="รหัสผ่านต้องมีอย่างน้อย 8 ตัว, และประกอบด้วยตัวพิมพ์เล็กและพิมพ์ใหญ่"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={handleClickShowPassword}
+                    onMouseDown={handleMouseDownPassword}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
           <TextField
             label="ยืนยันรหัสผ่าน"
             name="confirmPassword"
@@ -327,22 +343,21 @@ export default function Register() {
             fullWidth
             required
             InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              aria-label="toggle password visibility"
-                              onClick={handleClickShowPassword}
-                              onMouseDown={handleMouseDownPassword}
-                              edge="end"
-                            >
-                              {showPassword ? <VisibilityOff /> : <Visibility />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={handleClickShowPassword}
+                    onMouseDown={handleMouseDownPassword}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
 
-          {/* Row 5: Address */}
           <TextField
             label="บ้านเลขที่ / ที่อยู่"
             name="address"
@@ -352,7 +367,6 @@ export default function Register() {
             required
           />
 
-          {/* New Row for Province & District */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <FormControl fullWidth required>
               <InputLabel id="province-label">จังหวัด</InputLabel>
@@ -393,7 +407,6 @@ export default function Register() {
             </FormControl>
           </Box>
 
-          {/* New Row for Subdistrict & Postal Code */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <FormControl fullWidth required>
               <InputLabel id="subdistrict-label">ตำบล</InputLabel>
@@ -435,7 +448,6 @@ export default function Register() {
           </Button>
         </Box>
 
-        {/* Snackbar for notifications */}
         <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
           <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>

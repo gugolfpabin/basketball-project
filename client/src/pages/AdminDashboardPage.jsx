@@ -78,7 +78,7 @@ export default function AdminDashboardPage() {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const apiBase = 'http://localhost:5000/api';
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
 
   const categories = [
     { id: 0, name: 'ทั้งหมด' },

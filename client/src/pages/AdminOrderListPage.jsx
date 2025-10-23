@@ -40,18 +40,32 @@ import axios from 'axios';
 
 const drawerWidth = 240;
 
+
+const translateStatus = (status) => {
+  switch (status) {
+    case 'verifying':
+      return 'ระหว่างตรวจสอบ';
+    case 'completed':
+      return 'ชำระเงินเสร็จสิ้น';
+    case 'cancelled':
+      return 'ยกเลิกแล้ว';
+    default:
+      return status;
+  }
+};
+
 export default function AdminOrderListPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [anchorElUser, setAnchorElUser] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [anchorElStatusDropdown, setAnchorElStatusDropdown] = useState(null);
-    const apiBase = 'http://localhost:5000/api';
+  const apiBase = 'http://localhost:5000/api';
 
   const itemsPerPage = 20;
 
@@ -80,30 +94,30 @@ export default function AdminOrderListPage() {
   }, [navigate]);
 
 
-    useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                console.log('Token:', token ? 'Found' : 'Not found');
-                if (!token) {
-                    setError('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
-                    return;
-                }
-                const response = await axios.get(`${apiBase}/orders`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                setOrders(response.data);
-            } catch (err) {
-                console.error('Error fetching orders:', err);
-                console.error('Error response:', err.response?.data);
-                setError(`ไม่สามารถดึงข้อมูลออเดอร์ได้: ${err.response?.data?.message || err.message}`);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchOrders();
-    }, []);
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('ไม่พบ token กรุณาเข้าสู่ระบบใหม่');
+          setLoading(false);
+          return;
+        }
+  
+        const response = await axios.get(`${apiBase}/admin/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        setOrders(response.data.orders || response.data);
+      } catch (err) {
+        setError(`ไม่สามารถดึงข้อมูลออเดอร์ได้: ${err.response?.data?.message || err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
 
 
   const filteredOrders = useMemo(() => {
@@ -307,7 +321,7 @@ export default function AdminOrderListPage() {
                     <TableCell>{Number(order.TotalPrice).toFixed(2)}</TableCell>
                     <TableCell>
                       <Chip 
-                        label={order.Status} 
+                        label={translateStatus(order.Status)} 
                         color={getStatusColor(order.Status)}
                         size="small"
                         variant="outlined"

@@ -2,9 +2,7 @@ const db = require('../db');
 const generatePayload = require('promptpay-qr');
 const qrcode = require('qrcode');
 
-
-
-
+const QR_EXPIRY_MINUTES = 5; 
 
 exports.createManualOrder = async (req, res) => {
     const memberId = req.user.id;
@@ -21,16 +19,16 @@ exports.createManualOrder = async (req, res) => {
 
         const [newOrder] = await connection.query(
             'INSERT INTO `orders` (Member_ID, TotalPrice, Status, CreatedAt) VALUES (?, ?, ?, NOW())',
-            [memberId, subtotal, 'pending'] 
+            [memberId, subtotal, 'pending']
         );
         const orderId = newOrder.insertId;
 
         for (const item of items) {
             const [variantRows] = await connection.query(
-                'SELECT Stock, Cost FROM product_variants WHERE Variant_ID = ? FOR UPDATE', 
+                'SELECT Stock, Cost FROM product_variants WHERE Variant_ID = ? FOR UPDATE',
                 [item.variantId]
             );
-            
+
             if (variantRows.length === 0 || variantRows[0].Stock < item.quantity) {
                 await connection.rollback();
                 return res.status(400).json({ message: `สินค้า ${item.productName || ''} มีในสต็อกไม่เพียงพอ` });
@@ -43,10 +41,10 @@ exports.createManualOrder = async (req, res) => {
 
             await connection.query(
                 'INSERT INTO `orderdetails` (Order_ID, Variant_ID, Quantity, UnitPrice, UnitCost) VALUES (?, ?, ?, ?, ?)',
-                [orderId, item.variantId, item.quantity, item.unitPrice, variantRows[0].Cost] 
+                [orderId, item.variantId, item.quantity, item.unitPrice, variantRows[0].Cost]
             );
         }
-        
+
         const promptpayId = '097-294-5671';
         const amount = parseFloat(subtotal);
         const payload = generatePayload(promptpayId, { amount });
@@ -58,7 +56,8 @@ exports.createManualOrder = async (req, res) => {
             orderId: orderId,
             qrCodeImage: qrCodeImage,
             totalAmount: amount,
-            expiresAt: Date.now() + 5 * 60 * 1000
+        
+            expiresAt: Date.now() + QR_EXPIRY_MINUTES * 60 * 1000
         });
 
     } catch (error) {
@@ -69,9 +68,6 @@ exports.createManualOrder = async (req, res) => {
         if (connection) connection.release();
     }
 };
-
-
-
 
 
 exports.uploadSlip = async (req, res) => {
@@ -274,3 +270,4 @@ exports.deletePendingOrder = async (req, res) => {
         if (connection) connection.release();
     }
 };
+
