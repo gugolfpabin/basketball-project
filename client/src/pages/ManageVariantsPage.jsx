@@ -161,7 +161,12 @@ export default function ManageVariantsPage() {
                 </TableCell>
                 <TableCell>{variant.color}</TableCell>
                 <TableCell>{variant.size}</TableCell>
-                <TableCell>{variant.price}</TableCell>
+                <TableCell>
+                  {Number(variant.price).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
                 <TableCell>{variant.stock}</TableCell>
                 <TableCell align="center">
                   <Button onClick={() => handleEdit(variant.variantId)} startIcon={<EditIcon/>} sx={{mr: 1}}>แก้ไข</Button>

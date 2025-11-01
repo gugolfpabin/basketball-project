@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, X } from 'lucide-react';
-
+import toast from 'react-hot-toast';
 function CountdownTimer({ expiryTime, onExpire }) {
     const calculateTimeLeft = () => {
         const difference = +new Date(expiryTime) - +new Date();
@@ -22,7 +22,7 @@ function CountdownTimer({ expiryTime, onExpire }) {
     useEffect(() => {
         const timer = setInterval(() => {
             const newTimeLeft = calculateTimeLeft();
-            if (!newTimeLeft) {
+            if (!newTimeLeft) { 
                 onExpire();
                 clearInterval(timer);
             }
@@ -53,7 +53,7 @@ export default function ManualPaymentPage() {
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploadMessage, setUploadMessage] = useState('');
     const [isUploading, setIsUploading] = useState(false);
-
+    
     const [address, setAddress] = useState(null);
     const [loadingAddress, setLoadingAddress] = useState(true);
 
@@ -69,6 +69,9 @@ export default function ManualPaymentPage() {
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [subdistricts, setSubdistricts] = useState([]);
+
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
 
     const apiBase = 'http://localhost:5000/api';
 
@@ -142,10 +145,13 @@ export default function ManualPaymentPage() {
         }
     };
 
+   
     const handleCancelOrder = async () => {
-        if (!window.confirm('คุณต้องการยกเลิกรายการสั่งซื้อนี้ และกลับไปหน้าตะกร้าใช่หรือไม่?')) {
-            return;
-        }
+        setIsCancelModalOpen(true);
+    };
+
+    const executeCancelOrder = async () => {
+        setIsCancelling(true);
         try {
             const token = localStorage.getItem('token');
             await axios.post(
@@ -153,14 +159,40 @@ export default function ManualPaymentPage() {
                 {},
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
-            alert('ยกเลิกออเดอร์สำเร็จ');
+            
+            toast.success('ยกเลิกออเดอร์สำเร็จ');
+            setIsCancelModalOpen(false); 
             navigate('/cart');
 
         } catch (err) {
-            alert(err.response?.data?.message || 'ไม่สามารถยกเลิกออเดอร์ได้');
+            const errorMsg = err.response?.data?.message || 'ไม่สามารถยกเลิกออเดอร์ได้';
+            toast.error(errorMsg);
+            setIsCancelling(false);
+            setIsCancelModalOpen(false);
         }
     };
 
+     const autoCancelOrder = async () => {
+        console.log('QR Code expired. Automatically cancelling order...');
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(
+                `${apiBase}/orders/delete-pending/${orderId}`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            console.log('Order automatically cancelled successfully.');
+
+        } catch (err) {
+            console.error(
+                'Failed to auto-cancel order:', 
+                err.response?.data?.message || 'An error occurred'
+            );
+        }
+    };
+
+
+    
     useEffect(() => {
         if (!qrCodeImage) { navigate('/cart'); }
     }, [qrCodeImage, navigate]);
@@ -302,7 +334,7 @@ export default function ManualPaymentPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm mb-1">บ้านเลขที่ / ที่อยู่</label>
+                                    <label className="block text-sm mb-1">ที่อยู่เลขที่</label>
                                     <textarea name="Address" value={editData.Address} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required />
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -314,14 +346,14 @@ export default function ManualPaymentPage() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm mb-1">อำเภอ</label>
+                                        <label className="block text-sm mb-1">อำเภอ/เขต</label>
                                         <select name="District_ID" value={editData.District_ID} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required disabled={!editData.Province_ID}>
                                             <option value="">เลือกอำเภอ</option>
                                             {districts.map(d => <option key={d.District_ID} value={d.District_ID}>{d.DistrictName}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm mb-1">ตำบล</label>
+                                        <label className="block text-sm mb-1">ตำบล/แขวง</label>
                                         <select name="Subdistrict_ID" value={editData.Subdistrict_ID} onChange={handleEditChange} className="w-full border rounded px-2 py-1" required disabled={!editData.District_ID}>
                                             <option value="">เลือกตำบล</option>
                                             {subdistricts.map(s => <option key={s.Subdistrict_ID} value={s.Subdistrict_ID}>{s.SubdistrictName}</option>)}
@@ -346,16 +378,28 @@ export default function ManualPaymentPage() {
                 {qrCodeImage && !isExpired ? (
                     <>
                         <img src={qrCodeImage} alt="QR Code" className="mx-auto border-4 border-gray-300 rounded-lg" />
-                        <p className="text-2xl sm:text-3xl font-bold my-4">ยอดชำระ: {Number(totalAmount).toFixed(2)} บาท</p>
-                        <div className="mt-4"><CountdownTimer expiryTime={expiresAt} onExpire={() => setIsExpired(true)} /></div>
+                        <p className="text-2xl sm:text-3xl font-bold my-4">ยอดชำระ: {Number(totalAmount).toLocaleString('th-TH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })} บาท
+                        </p>
+                        <div className="mt-4">
+                            <CountdownTimer 
+                            expiryTime={expiresAt}
+                            onExpire={() => {
+                                setIsExpired(true);
+                                autoCancelOrder();
+        }} 
+    />
+                        </div>
                         <p className="mt-4 text-sm text-gray-500">กรุณาสแกน QR Code เพื่อชำระเงิน และ <b>บันทึกสลิป</b> ไว้เป็นหลักฐานสำหรับการแจ้งชำระเงิน</p>
                     </>
                 ) : (
                     <div className="my-10">
-                        <h2 className="text-2xl font-bold text-red-600">QR Code หมดอายุแล้ว</h2>
+                        <h2 className="text-2xl font-bold text-red-600">หมดเวลาการชำระเงินแล้ว</h2>
                         <p className="text-gray-600 mt-2">กรุณากลับไปที่หน้าตะกร้าสินค้าเพื่อทำรายการใหม่อีกครั้ง</p>
                         <button
-                            onClick={() => handleCancelOrder(false)}
+                            onClick={() => navigate('/cart')}
                             className="mt-6 inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
                         >
                             กลับไปหน้าตะกร้า
@@ -374,6 +418,33 @@ export default function ManualPaymentPage() {
                     </div>
                 )}
             </div>
+            {isCancelModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+                        <h2 className="text-lg font-bold mb-4 text-gray-800">ยืนยันการยกเลิก</h2>
+                        <p className="text-gray-700 mb-6">คุณต้องการยกเลิกรายการสั่งซื้อนี้ และกลับไปหน้าตะกร้าใช่หรือไม่?</p>
+                        <div className="flex justify-end gap-3">
+                            <button 
+                                type="button" 
+                                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300" 
+                                onClick={() => setIsCancelModalOpen(false)}
+                                disabled={isCancelling}
+                            >
+                                ไม่
+                            </button>
+                        
+                            <button 
+                                type="button" 
+                                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-400" 
+                                onClick={executeCancelOrder}
+                                disabled={isCancelling} 
+                            >
+                                {isCancelling ? 'กำลังยกเลิก...' : 'ยืนยัน'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

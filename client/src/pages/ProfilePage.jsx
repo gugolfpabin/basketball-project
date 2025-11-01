@@ -265,13 +265,13 @@ export default function ProfilePage() {
                                         <TextField label="นามสกุล" name="lastName" value={form.lastName} onChange={handleChange} required />
                                     </Box>
                                     <TextField label="อีเมล" name="email" type="email" value={form.email} required InputProps={{ readOnly: true }} sx={{ bgcolor: '#eeeeee' }} />
-                                    <TextField label="บ้านเลขที่ / ที่อยู่" name="address" value={form.address} onChange={handleChange} required multiline rows={2} />
+                                    <TextField label="ที่อยู่เลขที่่" name="address" value={form.address} onChange={handleChange} required multiline rows={2} />
                                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                                         <FormControl fullWidth required><InputLabel>จังหวัด</InputLabel><Select name="provinceId" value={form.provinceId} label="จังหวัด" onChange={handleChange}>{provinces.map(p => <MenuItem key={p.Province_ID} value={p.Province_ID}>{p.ProvinceName}</MenuItem>)}</Select></FormControl>
-                                        <FormControl fullWidth required><InputLabel>อำเภอ</InputLabel><Select name="districtId" value={form.districtId} label="อำเภอ" onChange={handleChange} disabled={!form.provinceId}>{districts.map(d => <MenuItem key={d.District_ID} value={d.District_ID}>{d.DistrictName}</MenuItem>)}</Select></FormControl>
+                                        <FormControl fullWidth required><InputLabel>อำเภอ/เขต</InputLabel><Select name="districtId" value={form.districtId} label="อำเภอ/เขต" onChange={handleChange} disabled={!form.provinceId}>{districts.map(d => <MenuItem key={d.District_ID} value={d.District_ID}>{d.DistrictName}</MenuItem>)}</Select></FormControl>
                                     </Box>
                                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                                        <FormControl fullWidth required><InputLabel>ตำบล</InputLabel><Select name="subdistrictId" value={form.subdistrictId} label="ตำบล" onChange={handleChange} disabled={!form.districtId}>{subdistricts.map(s => <MenuItem key={s.Subdistrict_ID} value={s.Subdistrict_ID}>{s.SubdistrictName}</MenuItem>)}</Select></FormControl>
+                                        <FormControl fullWidth required><InputLabel>ตำบล/แขวง</InputLabel><Select name="subdistrictId" value={form.subdistrictId} label="ตำบล/แขวง" onChange={handleChange} disabled={!form.districtId}>{subdistricts.map(s => <MenuItem key={s.Subdistrict_ID} value={s.Subdistrict_ID}>{s.SubdistrictName}</MenuItem>)}</Select></FormControl>
                                         <TextField label="รหัสไปรษณีย์" name="postalCode" value={form.postalCode} InputProps={{ readOnly: true }} sx={{ bgcolor: '#eeeeee' }} />
                                     </Box>
                                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>

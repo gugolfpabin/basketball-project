@@ -359,7 +359,7 @@ export default function Register() {
           />
 
           <TextField
-            label="บ้านเลขที่ / ที่อยู่"
+            label="ที่อยู่เลขที่"
             name="address"
             value={form.address}
             onChange={handleChange}
@@ -387,13 +387,13 @@ export default function Register() {
               </Select>
             </FormControl>
             <FormControl fullWidth required>
-              <InputLabel id="district-label">อำเภอ</InputLabel>
+              <InputLabel id="district-label">อำเภอ/เขต</InputLabel>
               <Select
                 labelId="district-label"
                 id="districtId"
                 name="districtId"
                 value={form.districtId}
-                label="อำเภอ *"
+                label="อำเภอ/เขต *"
                 onChange={handleChange}
                 disabled={districts.length === 0 || !form.provinceId}
               >
@@ -409,13 +409,13 @@ export default function Register() {
 
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <FormControl fullWidth required>
-              <InputLabel id="subdistrict-label">ตำบล</InputLabel>
+              <InputLabel id="subdistrict-label">ตำบล/แขวง</InputLabel>
               <Select
                 labelId="subdistrict-label"
                 id="subdistrictId"
                 name="subdistrictId"
                 value={form.subdistrictId}
-                label="ตำบล *"
+                label="ตำบล/แขวง *"
                 onChange={handleChange}
                 disabled={subdistricts.length === 0 || !form.districtId}
               >

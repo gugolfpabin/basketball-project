@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, ShoppingCart } from 'lucide-react';
 import axios from 'axios';
-
+import toast from 'react-hot-toast';
 export default function Navbar() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [anchorElUser, setAnchorElUser] = useState(false);
     const [cartCount, setCartCount] = useState(0);
     const [toast, setToast] = useState({ open: false, message: '' });
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -20,7 +21,7 @@ export default function Navbar() {
                 setUser(null);
             }
         }
-
+        
         const fetchCart = async () => {
             const token = localStorage.getItem('token');
             if (!token) return;
@@ -50,18 +51,31 @@ export default function Navbar() {
             window.removeEventListener('toast', onToast);
         };
     }, []);
-
-   const handleLogout = () => {
-    // แสดงหน้าต่าง Pop-up พร้อมข้อความและปุ่ม "OK" กับ "Cancel"
-    if (window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
-        // ถ้าผู้ใช้กด "OK" (ตกลง) โค้ดในนี้จะทำงาน
+    const executeLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
-        setAnchorElUser(false); // ปิดเมนู Dropdown
+        setAnchorElUser(false); // ปิดเมนู (ถ้ายังไม่ปิด)
+        setIsLogoutModalOpen(false); // ปิด Modal
         navigate('/login');
-    }
-};
+    };
+    const handleLogout = () => {
+        // (ลบ if window.confirm และโค้ดข้างในทิ้งทั้งหมด)
+        
+        setIsLogoutModalOpen(true); // 1. เปิด Modal
+        setAnchorElUser(false);     // 2. ปิดเมนู Dropdown
+    };
+//    const handleLogout = () => {
+//     // แสดงหน้าต่าง Pop-up พร้อมข้อความและปุ่ม "OK" กับ "Cancel"
+//     if (window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
+//         // ถ้าผู้ใช้กด "OK" (ตกลง) โค้ดในนี้จะทำงาน
+//         localStorage.removeItem('token');
+//         localStorage.removeItem('user');
+//         setUser(null);
+//         setAnchorElUser(false); // ปิดเมนู Dropdown
+//         navigate('/login');
+//     }
+// };
 
     return (
         <>
@@ -131,6 +145,33 @@ export default function Navbar() {
                         </>
                     )}
                 </div>
+                {isLogoutModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+                        <h2 className="text-lg font-bold mb-4 text-gray-800">ยืนยันการออกจากระบบ</h2>
+                        <p className="text-gray-700 mb-6">คุณต้องการออกจากระบบใช่หรือไม่?</p>
+                        <div className="flex justify-end gap-3">
+                            {/* ปุ่ม "ไม่" */}
+                            <button 
+                                type="button" 
+                                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300" 
+                                onClick={() => setIsLogoutModalOpen(false)}
+                            >
+                                ไม่
+                            </button>
+                            
+                            {/* ปุ่ม "ใช่" */}
+                            <button 
+                                type="button" 
+                                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700" 
+                                onClick={executeLogout}
+                            >
+                                ใช่, ออกจากระบบ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             </nav>
         </header>
         {/* simple text toast (will show briefly when window dispatches 'toast') */}

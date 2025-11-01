@@ -24,10 +24,11 @@ const productRoutes = require('./routes/admin/productRoutes');
 const orderRoutes = require('./routes/admin/orderRoutes');
 const adminOrderRoutes = require('./routes/admin/orderRoutes');
 const adminReportRoutes = require('./routes/admin/reportRoutes');
+const adminCategoryRoutes = require('./routes/admin/categoryRoutes');
 
 app.use('/api/admin/orders', adminOrderRoutes);
 app.use('/api/admin/reports', adminReportRoutes);
-
+app.use('/api/admin', adminCategoryRoutes);
 
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);

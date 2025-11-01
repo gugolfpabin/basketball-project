@@ -20,6 +20,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import th from 'date-fns/locale/th';
 import AdminReportPage from './pages/AdminReportPage';
 import ManageVariantsPage from './pages/ManageVariantsPage';
+import { Toaster } from 'react-hot-toast';
+import { Outlet } from 'react-router-dom';
 
 function App() {
   return (
@@ -55,6 +57,8 @@ function App() {
         
       </Routes>
     </Router>
+    <Outlet /> 
+      <Toaster position="bottom-center" />
     </LocalizationProvider>
   );
 }

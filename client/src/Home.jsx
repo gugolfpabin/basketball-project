@@ -14,7 +14,7 @@ export default function Home() {
     const [error, setError] = useState(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
     const apiBase = 'http://localhost:5000/api';
-
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
     const categories = [
         { id: 'all', name: 'ทั้งหมด', categoryId: null },
         { id: 'basketball-jerseys', name: 'เสื้อบาสเกตบอล', categoryId: 1 },
@@ -34,15 +34,31 @@ export default function Home() {
     const handleMenuClickUser = (event) => setAnchorElUser(event.currentTarget);
     const handleMenuCloseUser = () => setAnchorElUser(null);
 
-    const handleLogout = () => {
-    if (window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
+    const executeLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
-        setAnchorElUser(false);
+        setAnchorElUser(false); // ปิดเมนู (ถ้ายังไม่ปิด)
+        setIsLogoutModalOpen(false); // ปิด Modal
         navigate('/login');
-    }
-};
+    };
+
+    const handleLogout = () => {
+        // (ลบ if window.confirm และโค้ดข้างในทิ้งทั้งหมด)
+        
+        setIsLogoutModalOpen(true); // 1. เปิด Modal
+        setAnchorElUser(false);     // 2. ปิดเมนู Dropdown
+    };
+
+//     const handleLogout = () => {
+//     if (window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
+//         localStorage.removeItem('token');
+//         localStorage.removeItem('user');
+//         setUser(null);
+//         setAnchorElUser(false);
+//         navigate('/login');
+//     }
+// };
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -217,6 +233,33 @@ export default function Home() {
                 ) : (
                     <div className="text-center mt-8 text-gray-500">ไม่พบสินค้า</div>
                 )}
+                {isLogoutModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+                        <h2 className="text-lg font-bold mb-4 text-gray-800">ยืนยันการออกจากระบบ</h2>
+                        <p className="text-gray-700 mb-6">คุณต้องการออกจากระบบใช่หรือไม่?</p>
+                        <div className="flex justify-end gap-3">
+                            {/* ปุ่ม "ไม่" */}
+                            <button 
+                                type="button" 
+                                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300" 
+                                onClick={() => setIsLogoutModalOpen(false)}
+                            >
+                                ไม่
+                            </button>
+                            
+                            {/* ปุ่ม "ใช่" */}
+                            <button 
+                                type="button" 
+                                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700" 
+                                onClick={executeLogout}
+                            >
+                                ใช่, ออกจากระบบ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             </main>
         </div>
     );

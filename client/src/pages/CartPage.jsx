@@ -198,15 +198,23 @@ const handleCheckout = async () => {
                             <h2 className="text-xl font-semibold border-b pb-4">สรุปรายการสั่งซื้อ</h2>
                             <div className="flex justify-between mt-4">
                                 <span>ราคารวม (ที่เลือก {selectedItems.length} รายการ)</span>
-                                <span>{selectedSubtotal.toFixed(2)} THB</span>
+                                <span>{selectedSubtotal.toLocaleString('th-TH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })} THB</span>
                             </div>
                             <div className="flex justify-between mt-2 text-gray-500">
                                 <span>ค่าจัดส่ง</span>
-                                <span>(คำนวณในขั้นตอนถัดไป)</span>
+                                <span>(ฟรี)</span>
                             </div>
                             <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg">
                                 <span>ยอดสุทธิ</span>
-                                <span>{selectedSubtotal.toFixed(2)} THB</span>
+                                <span>
+  {selectedSubtotal.toLocaleString('th-TH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })} THB
+</span>
                             </div>
                             <button onClick={handleCheckout} disabled={selectedItems.length === 0} className={`w-full mt-6 py-3 rounded-md ${selectedItems.length === 0 ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
                                 {selectedItems.length === 0 ? 'โปรดเลือกสินค้าเพื่อชำระเงิน' : `ไปยังหน้าชำระเงิน (${selectedItems.length} รายการ)`}

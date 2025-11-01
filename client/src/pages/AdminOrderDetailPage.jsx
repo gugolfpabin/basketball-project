@@ -109,14 +109,20 @@ export default function AdminOrderDetailPage() {
                         <div className="w-full md:w-6/12 flex items-center text-sm">
                             <div className="w-4/12 md:w-4/12 text-left md:text-right">
                                 <span className="md:hidden text-gray-500 mr-2">ราคา:</span>
-                                <span>{Number(item.UnitPrice || item.Price || item.Unit_Price || item.unitPrice || 0).toFixed(2)}</span>
+                                <span>{Number(item.UnitPrice || item.Price || item.Unit_Price || item.unitPrice || 0).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}</span>
                             </div>
                             <div className="w-4/12 md:w-2/12 text-center">
                                 <span className="md:hidden text-gray-500 mr-2">จำนวน:</span>
                                 <span>x{item.Quantity}</span>
                             </div>
                             <div className="w-4/12 md:w-6/12 text-right font-semibold text-base">
-                                {Number(item.Quantity * (item.UnitPrice || item.Price || item.Unit_Price || item.unitPrice || 0)).toFixed(2)} บาท
+                                {Number(item.Quantity * (item.UnitPrice || item.Price || item.Unit_Price || item.unitPrice || 0)).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })} บาท
                             </div>
                         </div>
                     </div>
@@ -126,7 +132,8 @@ export default function AdminOrderDetailPage() {
                     <div className="w-full md:w-1/3">
                         <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-600">ราคาสินค้า:</span>
-                            <span>{Number(order.TotalPrice).toFixed(2)} บาท</span>
+                            <span>{Number(order.TotalPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
+                                บาท</span>
                         </div>
                         <div className="flex justify-between text-sm mb-2">
                             <span className="text-gray-600">ค่าจัดส่ง:</span>
@@ -134,7 +141,10 @@ export default function AdminOrderDetailPage() {
                         </div>
                         <div className="border-t pt-2 flex justify-between font-bold">
                             <span>ยอดรวมสุทธิ:</span>
-                            <span className="text-blue-600">{Number(order.TotalPrice).toFixed(2)} บาท</span>
+                            <span className="text-blue-600">{Number(order.TotalPrice).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })} บาท</span>
                         </div>
                     </div>
                 </div>

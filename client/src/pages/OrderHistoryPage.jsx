@@ -188,7 +188,10 @@ export default function OrderHistoryPage() {
                                         )}
                                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                                             <Typography sx={{ mr: 2 }}>ยอดรวมสุทธิ:</Typography>
-                                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>฿{Number(order.TotalPrice).toFixed(2)}</Typography>
+                                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>฿{Number(order.TotalPrice).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}</Typography>
                                         </Box>
                                     </Box>
                                 </Paper>

@@ -67,7 +67,7 @@ export default function AdminOrderListPage() {
   const [anchorElStatusDropdown, setAnchorElStatusDropdown] = useState(null);
   const apiBase = 'http://localhost:5000/api';
 
-  const itemsPerPage = 20;
+  const itemsPerPage = 5;
 
   const statusOptions = [
     { id: 'all', name: 'ทั้งหมด' },
@@ -318,7 +318,12 @@ export default function AdminOrderListPage() {
                     <TableCell>#{order.Order_ID}</TableCell>
                     <TableCell>{`${order.FirstName} ${order.LastName}`}</TableCell>
                     <TableCell>{new Date(order.CreatedAt).toLocaleDateString('th-TH')}</TableCell>
-                    <TableCell>{Number(order.TotalPrice).toFixed(2)}</TableCell>
+                    <TableCell>
+                      {Number(order.TotalPrice).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </TableCell>
                     <TableCell>
                       <Chip 
                         label={translateStatus(order.Status)} 
